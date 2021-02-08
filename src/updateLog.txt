@@ -1,2 +1,0 @@
-0) update log since last github push
-1) complete rewrite of code to support better AST

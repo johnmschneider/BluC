@@ -1,7 +1,0 @@
-0) Todo list
-0-1) implement macros
-0-2) handle #elif directive
-0-3) handle #else directive
-0-4) add support for multiline #define's (aka \ character)
-0-5) implement default string type being string class
-0-6) (parseTree.txt) new class begins at line 1042
