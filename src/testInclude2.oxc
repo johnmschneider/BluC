@@ -1,0 +1,1 @@
+char* hello2 = "hello from indirect include";

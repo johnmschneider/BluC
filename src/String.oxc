@@ -1,0 +1,217 @@
+#include <string.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include "Throwable.oxc"
+
+class String
+{
+    char* _cString;
+    int _len;
+    Throwable _t;
+    String* _s;
+    
+    this(char* value)
+    {
+        this->_len = 0;
+        this->_s = malloc(sizeof(String));
+        
+        char c = value[0];
+        for (int i = 0; ; i++)
+        {
+            c = value[i];
+            
+            if (c != '\0')
+            {
+                this->_len ++;
+            }
+            else
+            {
+                break;
+            }
+        }
+        
+        //add 1 since c strings are null-terminated (needing an extra character)
+        this->_cString = (char*) malloc(sizeof(char) * (this->length() + 1));
+        strcpy(this->_cString, value);
+    }
+    
+    ~this()
+    {
+        free(this->_cString);
+    }
+    
+    char* cString()
+    {
+        return this->_cString;
+    }
+    
+    Throwable charAt(int index)
+    {
+        if (index > this->length())
+        {
+            fprintf(stderr, "[String.charAt]: index %i greater than length\n",
+                index);
+            
+            //return null terminator
+            char* returnee = this->_cString + (this->length() + 1);
+            
+            this->_s("IndexOutOfBounds");
+            this->_t(returnee, this->_s);
+        }
+        else
+        {
+            char* returnee = this->_cString + index;
+            
+            this->_s("NoError");
+            this->_t(returnee, this->_s);
+        }
+        
+        return this->_t;
+    }
+    
+    int length()
+    {
+        return this->_len;
+    }
+    
+    bool isEmpty()
+    {
+        return (this->length() == 1 && this->_cString[0] == '\0');
+    }
+
+    void append(char* appendThis)
+    {
+        int appendeeLen = 0;
+
+        char c = appendThis[0];
+        for (int i = 0; ; i++)
+        {
+            c = appendThis[i];
+            
+            if (c != '\0')
+            {
+                appendeeLen ++;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        //add 1 to string to account for null terminator
+        int newLen = this->length() + appendeeLen + 1;
+
+        //don't include null terminator in length
+        this->_len = newLen - 1;
+        char* oldVal = this->_cString;
+        this->_cString = malloc(sizeof(char) * newLen);
+        strcpy(this->_cString, oldVal);
+        free(oldVal);
+        strcat(this->_cString, appendThis);
+    }
+    
+    bool equals(char* rawStr)
+    {
+        bool isEqual = true;
+        int len = this->length();
+        
+        if (len == 0 && rawStr[0] == '\0')
+        {
+            //empty string compared to empty string
+            isEqual = true;
+        }
+        else
+        {
+            for (int i = 0; i < len; i++)
+            {
+                if (rawStr[i] == '\0')
+                {
+                    isEqual = false;
+                    break;
+                }
+                else if (i == len - 1 && rawStr[i + 1] != '\0')
+                {
+                    isEqual = false;
+                    break;
+                }
+                else if (this->_cString[i] != rawStr[i])
+                {
+                    isEqual = false;
+                    break;
+                }
+            }
+        }
+        
+        return isEqual;
+    }
+    
+    bool stringEquals(String* other)
+    {
+        return this->equals(other->cString());
+    }
+    
+    int indexOf(char* charPattern)
+    {
+        int returnee = -1;
+        String* strPattern = malloc(sizeof(String));
+        int patternLen;
+
+        strPattern(charPattern);
+        patternLen = strPattern->length();
+
+        if (patternLen != 0)
+        {
+            bool isMatchingSoFar = false;
+            int curIndexInPattern = -1;
+            int matchStartIndex = -1;
+            int patternLastIndex = patternLen - 1;
+            int thisLen = this->length();
+            int thisLastIndex = thisLen - 1;
+
+            for (int i = 0; i < thisLen; i++)
+            {
+                if (isMatchingSoFar)
+                {
+                    if (this->_cString[i] == charPattern[curIndexInPattern])
+                    {
+                        if (curIndexInPattern == patternLastIndex)
+                        {
+                            returnee = matchStartIndex;
+                            break;
+                        }
+                        else if (i != thisLastIndex)
+                        {
+                            isMatchingSoFar = true;
+                            curIndexInPattern ++;
+                        }
+                        else
+                        {
+                            isMatchingSoFar = false;
+                        }
+                    }
+                    else
+                    {
+                        isMatchingSoFar = false;
+                        curIndexInPattern = -1;
+                        matchStartIndex = -1;
+                    }
+                }
+                else
+                {
+                    if (this->_cString[i] == charPattern[0])
+                    {
+                        isMatchingSoFar = true;
+
+                        //1 because we already matched the 0'th index
+                        curIndexInPattern = 1;
+                        matchStartIndex = i;
+                    }
+                } // end else
+            } // end for
+        } // end if (strPattern->length() != 0)
+
+        free(strPattern);
+        return returnee;
+    }
+};

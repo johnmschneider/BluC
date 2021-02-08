@@ -1,0 +1,175 @@
+#include <stdio.h>
+#include "testInclude.oxc"
+#include "Vector.oxc"
+#include "String.oxc"
+
+char *a = "i am a test str";
+char *b = "inside quote \"test\"";
+//char *c = c"i am a test cstr";
+
+class ParamlessConstructorTest
+{
+    this()
+    {
+        printf("ParamlessConstructorTest CONstructor called\n");
+    }
+    
+    ~this()
+    {
+        printf("ParamlessConstructorTest DEstructor called\n");
+    }
+}
+
+class ReplacementNode
+{
+    char* context;
+    char* nameBeforeMangle;
+    char* nameAfterMangle;
+    
+    void ctor(char* cont, char* nameBefore, char* nameAfter)
+    {
+        this->context = cont;
+        this->nameBeforeMangle = nameBefore;
+        this->nameAfterMangle = nameAfter;
+    }
+}
+
+void runOriginalTests()
+{
+    Vector v();
+    
+    char test = 'a';
+    v.add(&test);
+    printf("char == %c\n", (*((char*) v.get(0))));
+    printf("(that == %d)\n", (int)(*((char*) v.get(0))));
+    printf("we wanted %d\n", (int)('a'));
+
+    ReplacementNode rn;
+    rn.ctor("global", "test1", "testA");
+    
+    //new block test
+    if (1 == 1)
+    {
+        rn.ctor("global", "test2", "testB");
+    }
+
+    String test2("hello");
+    test2("non-initializer constructor test");
+            
+    test2.append(" world!");
+    printf("test.val == %s\n", test2.cString());
+    
+    String *test3 = malloc(sizeof(String));
+    test3("hi");
+    
+    printf("%s\n", test3->cString());
+    free(test3);
+    
+    Throwable result = test2.charAt(500);
+    String error = *(result.error());
+    if (error.equals("NoError"))
+    {
+        printf("test.charAt(6) == \"%c\"\n", *(char*)(result.data()));
+    }
+    else
+    {
+        fprintf(stderr, "%s%s", error.cString(), "\n");
+    }
+    
+    ParamlessConstructorTest test4;
+    test4();
+}
+
+void runStringTests()
+{
+    String hello("Hello world!");
+
+    int index1 = hello.indexOf("ello");
+
+    printf("\n\n");
+    printf("[runStringTests]: index1 == %d\n", index1);
+
+    //should return -1
+    printf("[runStringTests]: index2 == %d\n", hello.indexOf("world!!"));
+
+    printf("[runStringTests]: index3 == %d\n", hello.indexOf("world!"));
+}
+
+void Base_test()
+{
+    printf("Base called");
+}
+
+void Base_test();
+
+class Base
+{
+    int x;
+
+    this(int x)
+    {
+        this->x = x;
+        this->test = &Base_test;
+    }
+
+    int getX()
+    {
+        return this->x;
+    }
+
+    void (*test)();
+}
+
+void Inherited_test()
+{
+    printf("Inherited called");
+}
+
+void Inherited_test();
+
+class Inherited
+{
+    Base b;
+    int y;
+
+    this(int x, int y)
+    {
+        this->b(x);
+        this->b.test = &Inherited_test;
+        this->y = y;
+    }
+
+    int getY()
+    {
+        return this->y;
+    }
+}
+
+void runInheritenceTests()
+{
+    Base* b;
+    Inherited h(2, 1);
+    
+    b = (Base*) &h;
+
+    printf("\n\n");
+    printf("b.x == %d\n", b.getX());
+    printf("h.y == %d\n", h.getY());
+    
+    printf("calling b.test\n");
+    b->test();
+    printf("calling h.test\n");
+    h.b.test();
+}
+
+int main(void)
+{
+    runOriginalTests();
+    runStringTests();
+    runInheritenceTests();
+}
+
+class EOFClass
+{
+    
+}

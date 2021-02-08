@@ -1,0 +1,23 @@
+#include "String.oxc"
+
+class Throwable
+{
+    void* _data;
+    String* _errMsg;
+    
+    this(void* data, String* errMsg)
+    {
+        this->_data = data;
+        this->_errMsg = errMsg;
+    }
+    
+    void* data()
+    {
+        return this->_data;
+    }
+    
+    String* error()
+    {
+        return this->_errMsg;
+    }
+};

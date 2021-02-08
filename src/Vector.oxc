@@ -1,0 +1,80 @@
+#include <stdio.h>
+static size_t SIZEOF_VOID_PTR = sizeof(void*);
+class Vector
+{
+    int sizeOfArray;
+    int lastElemIndex;
+    void** array;
+
+    this()
+    {
+        int initialAllocationSize = 100 * SIZEOF_VOID_PTR;
+        this->sizeOfArray = initialAllocationSize;
+        this->lastElemIndex = -1;
+        this->array = malloc(initialAllocationSize);
+    }
+    
+    ~this()
+    {
+        free(this->array);
+    }
+    
+    
+    int size()
+    {
+        return this->lastElemIndex + 1;
+    }
+
+    int add(void* data)
+    {
+        int endIndex = this->sizeOfArray/SIZEOF_VOID_PTR;
+        
+        if (this->lastElemIndex == endIndex)
+        {
+            //resize vector
+            size_t newArraySize = (size_t)(2 * this->size() * SIZEOF_VOID_PTR);
+            void** newArray = (void**) malloc(newArraySize);
+            this->sizeOfArray = newArraySize;
+
+            for (int i = 0; i < endIndex + 1; i++)
+            {
+                newArray[i] = this->array[i];
+            }
+            
+            free(this->array);
+            this->array = newArray;
+            this->add(data);
+        }
+        else
+        {
+            this->lastElemIndex ++;
+            this->array[this->lastElemIndex] = data;
+        }
+    }
+
+    void remove(void* data)
+    {
+        for (int i = 0; i < this->size(); i++)
+        {
+            if (this->array[i] == data)
+            {
+                //shift all elements that are to the "right" of this element
+                //  left by one
+                for (int i2 = i + 1; i2 < this->size(); i2++)
+                {
+                    this->array[i2 - 1] = this->array[i2];
+                }
+
+                this->lastElemIndex --;
+                return;
+            }
+        }
+
+        fprintf(stderr, "[Vector.remove]: element not found in vector\n");
+    }
+
+    void* get(int index)
+    {
+        return this->array[index];
+    }
+};
