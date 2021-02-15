@@ -1,10 +1,9 @@
-## Notice
-The current build, while compilable, is minimally functional and is only uploaded to keep track of changes.
-
 # BluC
 A programming language that's essentially C with classes. The intent is to be a C and C++ alternative *while also* allowing access to the under-the-hood transpiled code, so you know exactly what the language's constructs are being transpiled into. Until version 1 of the language is completed, anything is subject to change. After version 1, backwards compatability will be heavily considered.
 
-# Notice
+### Notice
+The current build, while compilable, is minimally functional and is only uploaded to keep track of changes.
+
 The BluC compiler is currently undergoing a major rewrite. This compiler is only a prototype, and the actual compiler will be self-hosted.
 
 ### Setup
