@@ -36,6 +36,7 @@ By default, class fields are private and functions are public.
 #### Example class
 ```cpp
 #include <stdio.h>
+
 class Example
 {
     int memberVariable;
