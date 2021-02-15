@@ -14,12 +14,12 @@ Download the jar file and call it via the command line with your arguments.
 If the program cannot find the main class then you must run it with the command "java -jar pathToBluCJar.jar argumentsHere"
 
 ### File extension and information
-*Status: functional*
+*Status: functional*<br/>
 The ending for BluC source files is `.bluc` -- if you want to #include a bluc file, you must use this ending.
 
 #### Include statement
-*This feature _will_ be removed as soon as imports are functional*
-*Status: functional*
+*This feature _will_ be removed as soon as imports are functional*<br/>
+*Status: functional*<br/>
 
 There are not headers for BluC source files, just the source files themselves. The #include preprocessor directive is temporary until the import system is functional. The import system will be able to handle C source files. 
 
@@ -30,13 +30,13 @@ To include an BluC standard library file, use `include <libraryFileName.bluc>`
 To include your own source file, use `include "fileNameHere.bluc"`
 
 ### Class syntax
-*Status: functional*
+*Status: functional*<br/>
 By default, class fields are private and functions are public.
 
 #### Example class
 ```cpp
 #include <stdio.h>
-*Status: functional*
+*Status: functional*<br/>
 class Example
 {
     int memberVariable;
@@ -66,15 +66,15 @@ Output:
 variable == 22
 ```
 #### Explicit "this"
-*Status: functional*
+*Status: functional*<br/>
 To access member variables or methods from within a class, an explicit reference to "this" is required. The requirement of an explicit reference to "this" is being reviewed (in a language design perspective).
 
 #### Semicolons
-*Status: functional*
+*Status: functional*<br/>
 Semicolons after a class are not required. Unlike structs, classes can't name instances of that class after the end brace of the class.
 
 #### Constructor syntax
-*Status: functional*
+*Status: functional*<br/>
 Constructors are denoted by their lack of return type and "function name" of "this".
 
 ```cpp
@@ -110,7 +110,7 @@ Output:
 variable == 22
 ```
 
-*Status: functional*
+*Status: functional*<br/>
 If a constructor (even a parameter-less constructor) is not explicitly called then the class member variables will store whatever was previously in memory at that location. This is to allow optional class members without significant overhead.
 
 ```cpp
@@ -146,7 +146,7 @@ Output:
 Who knows?
 ```
 
-*Status: functional*
+*Status: functional*<br/>
 Constructors can be called "late" (i.e. not at initialization) and are known as late constructors.
 
 ```cpp
