@@ -6,6 +6,14 @@ The current build, while compilable, is minimally functional and is only uploade
 
 The BluC compiler is currently undergoing a major rewrite. This compiler is only a prototype, and the actual compiler will be self-hosted.
 
+### Introduction of Semantic Versioning
+I feel the codebase is sufficiently large and designed in such a way that Semantic Versioning between each github push would be highly beneficial.
+
+This project will now follow the rules of Semantic Version with the extra stipulation that builds <= 0.25.X are alpha (for the compiler as a whole), and builds >= 0.5.X but < 1.X.Y are alpha (again, for the compiler as a whole).
+
+### Version
+The current version is <b>0.1.0</b><br/>
+This follows the Semantic Versioning guidelines.
 ### Setup
 A valid installation of gcc is needed for BluC to automatically compile the C file to an exe. Otherwise, BluC can still transpile the file to C with the "-c" flag being set, but will not be able to automatically compile it to an exe.
 
