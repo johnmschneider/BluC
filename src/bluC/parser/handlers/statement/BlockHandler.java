@@ -1,10 +1,10 @@
-package bluC.transpiler.parser.handlers.statement;
+package bluC.parser.handlers.statement;
 
 import bluC.Logger;
 import bluC.transpiler.Scope;
 import bluC.transpiler.Statement;
 import bluC.transpiler.Token;
-import bluC.transpiler.parser.Parser;
+import bluC.parser.Parser;
 
 /**
  *
@@ -21,16 +21,18 @@ public class BlockHandler
         this.statementHandler = statementHandler;
     }
     
-    
     public Statement.Block handleBlock(Token openBrace)
     {
-        Statement.Block newBlock = new Statement.Block();
-
+        Statement.Block newBlock = new Statement.Block(
+            openBrace.getLineIndex());
+        
         //set cur token to "{"
         parser.nextToken();
         parser.pushScope(new Scope(parser.getCurrentScope(), newBlock));
         
         addStatementsToBlock(openBrace, newBlock);
+        newBlock.setEndingLineIndex(parser.getCurTokLineIndex());
+        
         parser.popScope(parser.peek());
         
         return newBlock;

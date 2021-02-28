@@ -89,6 +89,9 @@ public abstract class Expression
         }
     }
     
+    /**
+     * For usage of a variable in an EXPRESSION.
+     */
     public static class Variable extends Expression
     {
         private Statement.VarDeclaration variableInfo;

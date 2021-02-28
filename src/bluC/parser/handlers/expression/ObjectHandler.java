@@ -1,8 +1,8 @@
-package bluC.transpiler.parser.handlers.expression;
+package bluC.parser.handlers.expression;
 
 import bluC.transpiler.Expression;
 import bluC.transpiler.Token;
-import bluC.transpiler.parser.Parser;
+import bluC.parser.Parser;
 
 /**
  *

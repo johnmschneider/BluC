@@ -3,17 +3,17 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package bluC.transpiler.parser.exceptions;
+package bluC.parser.exceptions;
 
 /**
  *
  * @author John Schneider
  */
-public class MalformedNumber extends MalformedLiteralExpression
+public class MalformedInt extends MalformedNumber
 {
-    public MalformedNumber(String msg, int offendingCharIndex)
+    public MalformedInt(int offendingCharIndex)
     {
-        super(msg, offendingCharIndex);
+        super("Malformed integer number", offendingCharIndex);
     }
     
 }

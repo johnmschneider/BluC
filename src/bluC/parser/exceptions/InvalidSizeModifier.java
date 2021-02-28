@@ -1,4 +1,4 @@
-package bluC.transpiler.parser.exceptions;
+package bluC.parser.exceptions;
 
 import bluC.transpiler.Token;
 

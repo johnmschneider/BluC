@@ -1,4 +1,4 @@
-package bluC.transpiler.parser.handlers.expression;
+package bluC.parser.handlers.expression;
 
 import bluC.Logger;
 import bluC.transpiler.Expression;
@@ -6,10 +6,10 @@ import bluC.transpiler.Statement;
 import bluC.transpiler.Token;
 import bluC.transpiler.TokenFileInfo;
 import bluC.transpiler.TokenInfo;
-import bluC.transpiler.parser.Parser;
-import bluC.transpiler.parser.exceptions.MalformedNumber;
-import bluC.transpiler.parser.handlers.statement.StatementHandler;
-import bluC.transpiler.parser.handlers.statement.VariableHandler;
+import bluC.parser.Parser;
+import bluC.parser.exceptions.MalformedNumber;
+import bluC.parser.handlers.statement.StatementHandler;
+import bluC.parser.handlers.statement.VariableHandler;
 
 /**
  * @author John Schneider
@@ -316,7 +316,8 @@ public class ExpressionHandler
         
         if (parser.atEOF())
         {
-            //this should never happen so dump stack trace
+            //this should never happen so dump ast and stack trace
+            parser.dumpAstToStdout();
             new Exception("Fatal parse error: prematurely reached end of " +
                 "file").printStackTrace();
             

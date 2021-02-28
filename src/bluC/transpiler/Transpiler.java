@@ -1,10 +1,10 @@
 package bluC.transpiler;
 
-import bluC.transpiler.parser.Parser;
+import bluC.parser.Parser;
 import java.util.ArrayList;
 import bluC.transpiler.Statement.If.ElseIf;
 import bluC.transpiler.Statement.VarDeclaration.SimplifiedType;
-import bluC.transpiler.parser.handlers.statement.ClassHandler;
+import bluC.parser.handlers.statement.ClassHandler;
 
 /**
  *
@@ -89,8 +89,8 @@ public class Transpiler implements Expression.Visitor<String>,
     
     private void parse()
     {
-        parser = new Parser(lexedTokens);
-        statements = parser.parse();
+        parser      = new Parser(lexedTokens);
+        statements  = parser.parse();
     }
     
     private void importCoreLanguageDependencies()

@@ -1,11 +1,11 @@
-package bluC.transpiler.parser.handlers.statement;
+package bluC.parser.handlers.statement;
 
 import bluC.Logger;
 import bluC.BluC;
 import bluC.transpiler.Scope;
 import bluC.transpiler.Statement;
 import bluC.transpiler.Token;
-import bluC.transpiler.parser.Parser;
+import bluC.parser.Parser;
 import bluC.transpiler.Statement.VarDeclaration;
 import bluC.transpiler.TokenFileInfo;
 import bluC.transpiler.TokenInfo;
@@ -70,7 +70,8 @@ public class FunctionHandler
         functionName = parser.getCurToken();
         returnType = getReturnTypeVar(returnSign, returnSimplifiedType, 
             returnPointerLevel);
-        function = new Statement.Function(returnType, functionName);
+        function = new Statement.Function(returnType, functionName,
+            functionName.getLineIndex());
         
         return function;
     }
@@ -88,7 +89,8 @@ public class FunctionHandler
                 curToken.getLineIndex()));
 
         return new Statement.VarDeclaration(returnTypeSign, returnTypeType, 
-            returnTypePointerLevel, varName, null, null);
+            returnTypePointerLevel, varName, null, null,
+            curToken.getLineIndex());
     }
     
     public Statement handleMethod(VarDeclaration.Sign returnSign, 
@@ -103,7 +105,7 @@ public class FunctionHandler
         Statement.Method method = new Statement.Method(curClass, 
             rawMethod.getReturnType(), rawMethod.getNameToken(), 
             getMangledMethodName(curClass, rawMethod),
-            parser);
+            parser, rawMethod.getStartingLineIndex());
 
         parser.pushScope(new Scope(parser.getCurrentScope(), method));
         handleMethodDeclaration(method);
@@ -115,7 +117,7 @@ public class FunctionHandler
     private String getMangledMethodName(Statement.ClassDef curClass,
         Statement.Function rawMethod)
     {
-        return BluC.OXY_C_NAMESPACE_PREFIX + "_" + ClassHandler.
+        return BluC.BLU_C_NAMESPACE_PREFIX + "_" + ClassHandler.
             CLASS_NAMESPACE_PREFIX + "_" + curClass.getClassName().
             getTextContent() + "_" + METHOD_NAMESPACE_PREFIX + "_" +
             rawMethod.getNameText();
@@ -146,24 +148,41 @@ public class FunctionHandler
     /**
      * This is when we are either: (1) on a valid function name, or (2) the
      *  parser was able to synchronize a bad function name and we are carrying
-     *  on to report any additional errors (and are still on a valid function
-     *  name).
+     *  on to report any additional errors (and are thus technically on a valid
+     *  function name).
      */
     private void handleGlobalFunctionDeclarationWithValidReturnTypeAndName(
-        Statement.Function function)
+        Statement.Function functionWithRetTypeAndName)
     {
         Statement.ParameterList params;
         Token next;
-        Token functionName = function.getNameToken();
+        Token functionName = functionWithRetTypeAndName.getNameToken();
         
         params = getFunctionParameters(functionName);
-        function.setParameters(params);
+        functionWithRetTypeAndName.setParameters(params);
         next = parser.peek();
         
         if (next.getTextContent().equals("{"))
         {
             parser.nextToken();
-            blockHandler.addStatementsToBlock(next, function);
+            blockHandler.addStatementsToBlock(next, functionWithRetTypeAndName);
+            
+            /** 
+             * It seems we can't do this because the parser, by design, must
+             *  automatically move on to the next token after the current 
+             *  statement was processed. If that step is omitted in the parser
+             *  then we end up with an infinite parse loop.
+             * 
+             * I left the code here to remind myself not to try and modify the
+             *  parse tree in this way in the future.
+             * 
+             * As such, statement processors are now required to end on the last
+             *  token of the statement, so that the parser's automatic call to
+             *  nextToken will not miss any tokens. For instance, a function
+             *  handler will end with parser's current token set to the closing
+             *  curly brace.
+             */
+            //parser.nextToken(); // move to token after "}"
         }
         else
         {
@@ -174,31 +193,41 @@ public class FunctionHandler
     
     private Statement.ParameterList getFunctionParameters(Token functionName)
     {
-        Token next = parser.peek();
+        Token expectedOpenParen = parser.peek();
         
-        if (next.getTextContent().equals("("))
+        if (expectedOpenParen.getTextContent().equals("("))
         {
-            Statement.ParameterList returnee = new Statement.ParameterList();
-            
-            //consume "("
+            //move parser to "(" token
             parser.nextToken();
+            
+            Statement.ParameterList returnee = new Statement.ParameterList(
+                parser.peek().getLineIndex());
+            
             addParametersToParameterList(returnee, functionName);
             
             return returnee;
         }
         else
         {
-            Logger.err(next, "Expected \"(\" to start parameter list for " + 
-                "function \"" + functionName.getTextContent() + "\"");
-            return new Statement.ParameterList();
+            Logger.err(expectedOpenParen, "Expected \"(\" to start parameter " +
+                "list for function \"" + functionName.getTextContent() + "\"");
+            return new Statement.ParameterList(parser.peek(2).getLineIndex());
         }
     }
     
     private void addParametersToParameterList(Statement.ParameterList params,
         Token functionName)
     {
-        boolean closingParenFound = false;
-        Token curToken = parser.getCurToken();
+        boolean closingParenFound   = false;
+        Token curToken;
+        
+        /**
+         * We should now be on the "(" token. 
+         * 
+         * VariableHandler.handleVarDeclarationOrHigher() requires the parser to
+         *  be on the token immediately BEFORE the variable declaration starts.
+         */
+        curToken = parser.getCurToken();
         
         while (!parser.atEOF())
         {
@@ -221,43 +250,6 @@ public class FunctionHandler
                 "function \"" + functionName.getTextContent() + "\"");
         }
     }
-    
-    /*private void addBodyToFunc(Statement.Function func)
-    {
-        Token openBrace = parser.getCurToken();
-        
-        // make peek() peek at the next token after "{"
-        parser.nextToken();
-        Token next = parser.peek(); 
-        
-        boolean braceMatched = false;
-        
-        while (!parser.atEOF())
-        {
-            /**
-             * We don't have to worry about matching inner braces because our 
-             *  handleStatement method will automatically match any block
-             *  statement braces for us
-             */
-            /*if (next.getTextContent().equals("}"))
-            {
-                braceMatched = true;
-                break;
-            }
-            else
-            {
-                func.addStatement(statementHandler.handleStatement(true));
-                next = parser.peek();
-            }
-        }
-        
-        if (!braceMatched)
-        {
-            Logger.err(next, "Expected \"}\" to end body of function \"" + 
-                func.getNameText() + "\" on line " + 
-                (openBrace.getLineIndex() + 1));
-        }
-    }*/
     
     private void handleBadGlobalFunctionName(
         Statement.Function function)

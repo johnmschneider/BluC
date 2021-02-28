@@ -19,7 +19,7 @@ import bluC.transpiler.TokenInfo;
  */
 public class BluC
 {
-    public static final String OXY_C_NAMESPACE_PREFIX = "___bluC";
+    public static final String BLU_C_NAMESPACE_PREFIX = "___bluC";
     private static Transpiler transpiler;
     private static long transpileStartTime = -1;
     private static long transpileEndTime = -1;
@@ -190,10 +190,33 @@ public class BluC
         }
     }
     
+    private static void letJVMSpinUp()
+    {
+        try 
+        {
+            // let the JVM spin up so we get a more accurate measurement
+
+            System.out.println("Letting the JVM spin-up so more accurate " +
+                "timing can be recorded.");
+            
+            for (int i = 3; i > 0; i--)
+            {
+                System.out.println(i);
+                Thread.sleep(1000);
+            }
+            System.out.println("Spinup done.\n");
+            
+        } catch (InterruptedException ex)
+        {
+            ex.printStackTrace();
+        }
+    }
+    
     public static void compile(String[] args)
     {
         if (Flags.get("time") != null)
         {
+            letJVMSpinUp();
             transpileStartTime = System.currentTimeMillis();
         }
         
@@ -209,11 +232,11 @@ public class BluC
             {
                 Logger.err(
                     getNullTokenWithFilePath(f.getCanonicalPath()),
-                    "FATAL: file not found");
+                    "FATAL: file `" + args[0] + "` not found");
             } catch (IOException ex)
             {
                 Token filePath = getNullTokenWithFilePath(f.getAbsolutePath());
-                Logger.err(filePath, "FATAL: file not found");
+                Logger.err(filePath, "FATAL: file `" + args[0] + "` not found");
                 
                 Logger.err(filePath, "FATAL: Cannot resolve canonical path: ");
                 ex.printStackTrace();
@@ -223,7 +246,7 @@ public class BluC
         if (Flags.get("time") != null && !Logger.hasLoggedError())
         {
             System.out.println("\n\nTranspilation done in " + 
-                (transpileEndTime - transpileStartTime) + " ms");
+                (transpileEndTime - transpileStartTime) + " ms.");
         }
     }
     

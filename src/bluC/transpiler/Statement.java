@@ -3,42 +3,49 @@ package bluC.transpiler;
 import java.util.ArrayList;
 import bluC.transpiler.Statement.VarDeclaration.Sign;
 import bluC.transpiler.Statement.VarDeclaration.SimplifiedType;
-import bluC.transpiler.parser.Parser;
+import bluC.parser.Parser;
 
 /**
  * @author John Schneider
  */
 public abstract class Statement
 {
+    public static long NO_STARTING_LINE_INDEX = -1;
+    public static long NO_ENDING_LINE_INDEX   = -1;
+    
+    private long startingLineIndex  = NO_STARTING_LINE_INDEX;
+    private long endingLineIndex    = NO_ENDING_LINE_INDEX;
+    
     public static interface Visitor<T>
     {
         //blocks
-        T visitBlock(Statement.Block statement);
+        T visitBlock        (Statement.Block statement);
         
-        T visitFunction(Statement.Function statement);
-        T visitMethod(Statement.Method statement);
+        T visitFunction     (Statement.Function statement);
+        T visitMethod       (Statement.Method statement);
         T visitParameterList(Statement.ParameterList statement);
                     
-        T visitIf(Statement.If statement);
-        T visitClassDef(Statement.ClassDef statement);
-        T visitStructDef(Statement.StructDef statement);
-        T visitWhile(Statement.While statement);
+        T visitIf           (Statement.If statement);
+        T visitClassDef     (Statement.ClassDef statement);
+        T visitStructDef    (Statement.StructDef statement);
+        T visitWhile        (Statement.While statement);
         
         //misc
-        T visitReturn(Statement.Return statement);
-        T visitExpressionStatement(Statement.ExpressionStatement statement);
-        T visitPackage(Statement.Package statement);
+        T visitReturn               (Statement.Return statement);
+        T visitExpressionStatement  (Statement.ExpressionStatement statement);
+        T visitPackage              (Statement.Package statement);
         
         //vars
-        T visitVarDeclaration(Statement.VarDeclaration statement);
+        T visitVarDeclaration       (Statement.VarDeclaration statement);
     }
     
     public static class Block extends Statement
     {
         private ArrayList<Statement> body;
         
-        public Block()
+        public Block(long startingLineIndex)
         {
+            super(startingLineIndex);
             this.body = new ArrayList<>();
         }
         
@@ -81,9 +88,10 @@ public abstract class Statement
         private Statement.ParameterList parameterList;
         private Token functionName;
         
-        public Function(Statement.VarDeclaration returnType, Token functionName)
+        public Function(Statement.VarDeclaration returnType, Token functionName,
+            long startingLineIndex)
         {
-            super();
+            super(startingLineIndex);
             
             this.returnType = returnType;
             this.functionName = functionName;
@@ -135,8 +143,9 @@ public abstract class Statement
     {
         private final ArrayList<Statement.VarDeclaration> parameters;
         
-        public ParameterList()
+        public ParameterList(long startingLineIndex)
         {
+            super(startingLineIndex);
             this.parameters = new ArrayList<>();
         }
         
@@ -164,21 +173,38 @@ public abstract class Statement
         private final Parser parser;
         
         public Method(Statement.ClassDef class_, VarDeclaration returnVar,
-            Token methodName, String mangledName, Parser parser)
+            Token methodName, String mangledName, Parser parser,
+            long startingLineIndex)
         {
-            super(returnVar, methodName);
-            this.class_ = class_;
-            this.mangledName = mangledName;
-            this.parser = parser;
+            super(returnVar, methodName, startingLineIndex);
+            this.class_         = class_;
+            this.mangledName    = mangledName;
+            this.parser         = parser;
         }
         
         @Override
         public void setParameters(ParameterList parameters)
         {
-            ParameterList listWithThis = new ParameterList();
+            long                                startingLineIndex;
+            ParameterList                       listWithThis;
+            ArrayList<Statement.VarDeclaration> rawParameters;
+            
+            startingLineIndex    = parameters.getStartingLineIndex();
+            listWithThis    = new ParameterList(startingLineIndex);
+            rawParameters   = parameters.getParameters();
             
             // to determine what file and line the "this" is on
-            Token param1Token = parameters.getParameters().get(0).getName();
+            Token tokenBeforeTheThisKeyword; 
+            
+            if (rawParameters.isEmpty())
+            {
+                // the "(" token
+                tokenBeforeTheThisKeyword = parser.getCurToken();
+            }
+            else
+            {
+                tokenBeforeTheThisKeyword = rawParameters.get(0).getName();
+            }
             
             VarDeclaration this_ = new VarDeclaration(Sign.UNSPECIFIED, 
                 SimplifiedType.CLASS, 1,
@@ -186,11 +212,11 @@ public abstract class Statement
                 new Token(
                    new TokenInfo("this", false),
                         
-                   new TokenFileInfo(param1Token.getFilepath(), 
-                       param1Token.getLineIndex())
+                   new TokenFileInfo(tokenBeforeTheThisKeyword.getFilepath(), 
+                       tokenBeforeTheThisKeyword.getLineIndex())
                 ), 
                     
-                null, null);
+                null, null, tokenBeforeTheThisKeyword.getLineIndex());
             
             this_.setClassID(class_.getClassID());
             parser.getCurrentScope().addVariableToScope(this_);
@@ -228,9 +254,9 @@ public abstract class Statement
         {
             private Expression condition;
             
-            public ElseIf(Expression condition)
+            public ElseIf(Expression condition, long startingLineIndex)
             {
-                super();
+                super(startingLineIndex);
                 this.condition = condition;
             }
             
@@ -248,9 +274,9 @@ public abstract class Statement
         
         public static class Else extends Block
         {
-            public Else()
+            public Else(long startingLineIndex)
             {
-                super();
+                super(startingLineIndex);
             }
             
             @Override
@@ -265,9 +291,9 @@ public abstract class Statement
         private ArrayList<ElseIf> elseIfs;
         private Else else_;
         
-        public If(Expression condition)
+        public If(Expression condition, long startingLineIndex)
         {
-            super();
+            super(startingLineIndex);
             this.condition = condition;
             elseIfs = new ArrayList<>();
             else_ = null;
@@ -319,14 +345,14 @@ public abstract class Statement
         private long classID;
         private static long nextClassID = Long.MIN_VALUE;
         public static final ClassDef objectBaseClass = new ClassDef("Object", 
-            "bluc.lang");
+            "bluc.lang", Statement.NO_STARTING_LINE_INDEX);
         
         /**
          * Helper constructor for other constructors.
          */
-        private ClassDef() 
+        private ClassDef(long startingLineIndex) 
         {
-            super();
+            super(startingLineIndex);
             
             this.baseClass = null;
             this.classID = nextClassID;
@@ -334,9 +360,9 @@ public abstract class Statement
             nextClassID++;
         }
         
-        private ClassDef(String className, String package_)
+        private ClassDef(String className, String package_, long startingLineIndex)
         {
-            this();
+            this(startingLineIndex);
             
             this.className = new Token(
                 new TokenInfo(className, true),
@@ -345,9 +371,9 @@ public abstract class Statement
                 package_);
         }
         
-        public ClassDef(Token className) 
+        public ClassDef(Token className, long startingLineIndex) 
         {
-            this();
+            this(startingLineIndex);
             
             this.className = className;
         }
@@ -376,9 +402,9 @@ public abstract class Statement
     
     public static class StructDef extends Block
     {
-        public StructDef()
+        public StructDef(long startingLineIndex)
         {
-            super();
+            super(startingLineIndex);
         }
         
         @Override
@@ -396,9 +422,9 @@ public abstract class Statement
     
     public static class While extends Block
     {
-        public While()
+        public While(long startingLineIndex)
         {
-            super();
+            super(startingLineIndex);
         }
         
         @Override
@@ -412,8 +438,9 @@ public abstract class Statement
     {
         private Statement returnedStatement;
         
-        public Return(Statement returnedStatement)
+        public Return(Statement returnedStatement, long startingLineIndex)
         {
+            super(startingLineIndex);
             this.returnedStatement = returnedStatement;
         }
         
@@ -433,8 +460,9 @@ public abstract class Statement
     {
         private final Expression expression;
         
-        public ExpressionStatement(Expression expression)
+        public ExpressionStatement(Expression expression, long startingLineIndex)
         {
+            super(startingLineIndex);
             this.expression = expression;
         }
         
@@ -464,7 +492,12 @@ public abstract class Statement
             SHORT,
             LONG,
             LONG_LONG,
-            UNSPECIFIED
+            UNSPECIFIED;
+            
+            public String getActualModifierText()
+            {
+                return name().toLowerCase().replace("_", " ");
+            }
         }
         
         public static enum SimplifiedType
@@ -487,12 +520,12 @@ public abstract class Statement
         /**
          * How many indirections (asterisks) are declared for this variable
          */
-        private int pointerLevel;
-        private Sign sign;
-        private SimplifiedType simplifiedType;
-        private Token varName;
-        private Token assignmentOperator;
-        private Expression value;
+        private final int pointerLevel;
+        private final Sign sign;
+        private final SimplifiedType simplifiedType;
+        private final Token varName;
+        private final Token assignmentOperator;
+        private final Expression value;
         
         /**
          * If the SimplifiedType is CLASS, then this is set to the classID, 
@@ -502,8 +535,9 @@ public abstract class Statement
         
         public VarDeclaration(Sign sign, SimplifiedType simplifiedType, 
             int pointerLevel, Token varName, Token assignmentOperator, 
-            Expression value)
+            Expression value, long startingLineIndex)
         {
+            super(startingLineIndex);
             this.sign = sign;
             this.simplifiedType = simplifiedType;
             this.pointerLevel = pointerLevel;
@@ -573,8 +607,9 @@ public abstract class Statement
     {
         private String fullyQualifiedPackageName;
         
-        public Package(String fullyQualifiedPackageName)
+        public Package(String fullyQualifiedPackageName, long startingLineIndex)
         {
+            super(startingLineIndex);
             this.fullyQualifiedPackageName = fullyQualifiedPackageName;
         }
         
@@ -590,10 +625,43 @@ public abstract class Statement
         }
     }
     
+    public Statement(long startingLineIndex)
+    {
+        this.startingLineIndex = startingLineIndex;
+    }
+    
+    
     abstract <T> T accept(Visitor<T> visitor);
     
     public boolean needsSemicolon()
     {
         return true;
     }
+    
+    /**
+     * Returns the line the statement started on.
+     */
+    public long getStartingLineIndex()
+    {
+        return startingLineIndex;
+    }
+    
+    public void setStartingLineIndex(long startingLineIndex)
+    {
+        this.startingLineIndex = startingLineIndex;
+    }
+    
+    /**
+     * Returns the line the statement ended on.
+     */
+    public long getEndingLineIndex()
+    {
+        return endingLineIndex;
+    }
+    
+    public void setEndingLineIndex(long endingLineIndex)
+    {
+        this.endingLineIndex = endingLineIndex;
+    }
+    
 }

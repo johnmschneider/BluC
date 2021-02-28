@@ -1,6 +1,6 @@
-package bluC.transpiler.parser.handlers.statement;
+package bluC.parser.handlers.statement;
 
-import bluC.transpiler.parser.handlers.expression.ExpressionHandler;
+import bluC.parser.handlers.expression.ExpressionHandler;
 import bluC.Logger;
 import bluC.transpiler.Expression;
 import bluC.transpiler.Statement;
@@ -9,7 +9,7 @@ import bluC.transpiler.Statement.VarDeclaration.SimplifiedType;
 import bluC.transpiler.Token;
 import bluC.transpiler.TokenFileInfo;
 import bluC.transpiler.TokenInfo;
-import bluC.transpiler.parser.Parser;
+import bluC.parser.Parser;
 
 /**
  *
@@ -29,12 +29,13 @@ public class StatementHandler
     {
         this.parser = parser;
         
-        varHandler = new VariableHandler(parser, this);
-        expressionHandler = new ExpressionHandler(parser, this);
-        blockHandler = new BlockHandler(parser, this);
-        funcHandler = new FunctionHandler(parser, this, blockHandler);
-        ifHandler = new IfHandler(parser, blockHandler, expressionHandler);
-        classHandler = new ClassHandler(parser, varHandler, blockHandler,
+        varHandler          = new VariableHandler(parser, this);
+        expressionHandler   = new ExpressionHandler(parser, this);
+        blockHandler        = new BlockHandler(parser, this);
+        funcHandler         = new FunctionHandler(parser, this, blockHandler);
+        ifHandler           = new IfHandler(parser, blockHandler, 
+            expressionHandler);
+        classHandler        = new ClassHandler(parser, varHandler, blockHandler,
             funcHandler);
         
         //due to circular references to varHandler we had to create a 
@@ -83,8 +84,10 @@ public class StatementHandler
             Statement.Block block = blockHandler.handleBlock(openBrace);
             return block;
         }
-        
-        return handleIfStatementOrHigher();
+        else 
+        {
+            return handleIfStatementOrHigher();
+        }
     }
     
     private Statement handleIfStatementOrHigher()
@@ -95,8 +98,10 @@ public class StatementHandler
         {
             return ifHandler.handleIfStatement(potentialIf);
         }
-        
-        return handleExpressionStatementOrHigher();
+        else
+        {
+            return handleExpressionStatementOrHigher();
+        }
     }
     
     private Statement handleExpressionStatementOrHigher()
@@ -110,10 +115,13 @@ public class StatementHandler
         {
             Expression expression = expressionHandler.handleExpression();
 
-            return new Statement.ExpressionStatement(expression);
+            return new Statement.ExpressionStatement(expression, 
+                next.getLineIndex());
         }
-        
-        return handleClassDefinitionOrHigher();
+        else
+        {
+            return handleClassDefinitionOrHigher();
+        }
     }
     
     private Statement handleClassDefinitionOrHigher() 
@@ -124,8 +132,10 @@ public class StatementHandler
         {
             return classHandler.handleClass(parser.peek());
         }
-        
-        return handleReturnOrHigher();
+        else 
+        {
+            return handleReturnOrHigher();
+        }
     }
     
     private Statement handleReturnOrHigher()
@@ -140,12 +150,15 @@ public class StatementHandler
             parser.nextToken();
             returnedExpression = handleExpressionStatementOrHigher();
             
-            return_ = new Statement.Return(returnedExpression);
+            return_ = new Statement.Return(returnedExpression,
+                parser.getCurTokLineIndex());
             
             return return_;
         }
-        
-        return handlePackage();
+        else
+        {
+            return handlePackage();
+        }
     }
     
     private Statement handlePackage()
@@ -156,14 +169,18 @@ public class StatementHandler
         {
             return getPackage();
         }
-        
-        return handleInvalidStartOfStatement();
+        else
+        {
+            return handleInvalidStartOfStatement();
+        }
     }
     
     private Statement getPackage()
     {
-        int startIndex = parser.getCurTokIndex();
-        Token packageToken = parser.peek();
+        int     startTokenIndex = parser.getCurTokIndex();
+        Token   packageToken    = parser.peek();
+        int     startLineIndex  = packageToken.getLineIndex();
+        
         String fullyQualifiedPackage = "";
         
         while (true)
@@ -180,17 +197,18 @@ public class StatementHandler
 
                 //  synchronize parser
                 
-                parser.setToken(startIndex);
+                parser.setToken(startTokenIndex);
                 fullyQualifiedPackage = "";
                 
                 while (true)
                 {
                     parser.nextToken();
                     
-                    if (parser.getCurToken().getLineIndex() != 
+                    if (parser.getCurTokLineIndex() != 
                         qualifiedNameStartLineIndex)
                     {
-                        return new Statement.Package(fullyQualifiedPackage);
+                        return new Statement.Package(fullyQualifiedPackage,
+                            startLineIndex);
                     }
                     
                     fullyQualifiedPackage += parser.peek().getTextContent();
@@ -198,7 +216,8 @@ public class StatementHandler
             }
             else if (parser.peekMatches(";"))
             {
-                return new Statement.Package(fullyQualifiedPackage);
+                return new Statement.Package(fullyQualifiedPackage,
+                    startLineIndex);
             }
 
             fullyQualifiedPackage += parser.peek().getTextContent();
@@ -215,9 +234,17 @@ public class StatementHandler
         
         if (parser.atEOF())
         {
-            //this should never happen so dump stack trace
-            new Exception("Fatal parse error: prematurely reached end of " +
-                "file").printStackTrace();
+            //this should never happen so dump ast and stack trace
+            parser.dumpAstToStdout();
+            try
+            { 
+                throw new Exception("Fatal parse error: prematurely reached " +
+                    "end of file");
+            }
+            catch (Exception ex)
+            {
+                ex.printStackTrace();
+            }
             
             //exit because otherwise our parser goes into an infinite loop
             System.exit(1);
@@ -232,6 +259,6 @@ public class StatementHandler
 
                 new TokenFileInfo(next.getFilepath(), next.getLineIndex())),
                 
-            null, null);
+            null, null, parser.getCurTokLineIndex());
     }
 }

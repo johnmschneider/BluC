@@ -1,8 +1,8 @@
 package bluC.transpiler;
 
-import bluC.transpiler.parser.exceptions.MalformedNumber;
-import bluC.transpiler.parser.exceptions.MalformedFloat;
-import bluC.transpiler.parser.exceptions.MalformedInt;
+import bluC.parser.exceptions.MalformedNumber;
+import bluC.parser.exceptions.MalformedFloat;
+import bluC.parser.exceptions.MalformedInt;
 
 /**
  *
@@ -10,18 +10,18 @@ import bluC.transpiler.parser.exceptions.MalformedInt;
  */
 public class Token
 {       
-    public static final String EOF = "___BluC_eof";
-    public static final String NO_TEXT_CONTENT = "n/a";
+    public static final String EOF              = "___BluC_eof";
+    public static final String NO_TEXT_CONTENT  = "___n/a";
 
-    private TokenInfo tokenInfo;
-    private TokenFileInfo fileInfo;    
-    private String package_;
+    private TokenInfo       tokenInfo;
+    private TokenFileInfo   fileInfo;
+    private String          package_;
     
     public Token(TokenInfo tokenInfo, TokenFileInfo fileInfo, String package_)
     {
-        this.tokenInfo = tokenInfo;
-        this.fileInfo = fileInfo;
-        this.package_ = package_;
+        this.tokenInfo  = tokenInfo;
+        this.fileInfo   = fileInfo;
+        this.package_   = package_;
     }
     
     /**
@@ -30,9 +30,9 @@ public class Token
      */
     public Token(TokenInfo tokenInfo, TokenFileInfo fileInfo)
     {
-        this.tokenInfo = tokenInfo;
-        this.fileInfo = fileInfo;
-        this.package_ = null;
+        this.tokenInfo  = tokenInfo;
+        this.fileInfo   = fileInfo;
+        this.package_   = null;
     }
     
     
@@ -137,7 +137,21 @@ public class Token
         
         return textContent.charAt(textContent.length() - 1) == '"';
     }
-
+    
+    /**
+     * Returns true if this token's text matches a plain-old-data 
+     *  type specifier.
+     */
+    public boolean isReservedDataTypeBase() 
+    {
+        String textContent = getTextContent();
+        
+        return
+            textContent.equals("char") || textContent.equals("int") ||
+            textContent.equals("float") || textContent.equals("double") ||
+            textContent.equals("bool");
+    }
+    
     public boolean isReservedWord()
     {
         String textContent = getTextContent();
@@ -149,14 +163,12 @@ public class Token
                 
             //c terms
             textContent.equals("auto") || textContent.equals("break") || 
-            textContent.equals("case") || textContent.equals("char") || 
-            textContent.equals("const") || textContent.equals("continue") || 
-            textContent.equals("default") || textContent.equals("do") ||
-            textContent.equals("double") || textContent.equals("else") || 
-            textContent.equals("enum") || textContent.equals("extern") || 
-            textContent.equals("float") || textContent.equals("for") || 
-            textContent.equals("goto") || textContent.equals("if") || 
-            textContent.equals("inline") || textContent.equals("int") || 
+            textContent.equals("case") || textContent.equals("const") || 
+            textContent.equals("continue") || textContent.equals("default") || 
+            textContent.equals("do") || textContent.equals("else") || 
+            textContent.equals("enum") || textContent.equals("extern") ||
+            textContent.equals("for") || textContent.equals("goto") || 
+            textContent.equals("if") || textContent.equals("inline") ||
             textContent.equals("long") || textContent.equals("register") || 
             textContent.equals("restrict") || textContent.equals("return") || 
             textContent.equals("short") || textContent.equals("signed") || 
@@ -164,8 +176,10 @@ public class Token
             textContent.equals("struct") || textContent.equals("switch") || 
             textContent.equals("typedef") || textContent.equals("union") || 
             textContent.equals("unsigned") || textContent.equals("void") || 
-            textContent.equals("volatile") || textContent.equals("while") || 
-            textContent.equals("bool");
+            textContent.equals("volatile") || textContent.equals("while") ||
+            
+            isReservedDataTypeBase()
+            ;
     }
     
     public boolean isReservedLexeme()
@@ -185,5 +199,13 @@ public class Token
         
         return !(Character.isDigit(startingChar) || isReservedWord() || 
             isReservedLexeme());
+    }
+    
+    @Override
+    public String toString()
+    {
+        return "[textContent == \"" + getTextContent() + "\"]\n" +
+               "[line == \"" + (getLineIndex() + 1) + "\"]\n" +
+               "[file == \"" + getFilepath() + "\"]";
     }
 }

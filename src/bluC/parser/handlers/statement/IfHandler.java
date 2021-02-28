@@ -1,4 +1,4 @@
-package bluC.transpiler.parser.handlers.statement;
+package bluC.parser.handlers.statement;
 
 import bluC.Logger;
 import bluC.transpiler.Expression;
@@ -9,8 +9,8 @@ import bluC.transpiler.Statement.If.ElseIf;
 import bluC.transpiler.Token;
 import bluC.transpiler.TokenFileInfo;
 import bluC.transpiler.TokenInfo;
-import bluC.transpiler.parser.Parser;
-import bluC.transpiler.parser.handlers.expression.ExpressionHandler;
+import bluC.parser.Parser;
+import bluC.parser.handlers.expression.ExpressionHandler;
 
 /**
  *
@@ -53,7 +53,7 @@ public class IfHandler
     private Statement handleOpenParenthesisAndCondition(Token openParen,
         Token potentialIf)
     {
-        Statement.If statement = newIfWithCondition();
+        Statement.If statement = newIfWithCondition(openParen);
         Token closeParen = parser.peek();
         
         if (closeParen.getTextContent().equals(")"))
@@ -90,7 +90,7 @@ public class IfHandler
         return parser.peekMatches(3, "}");
     }
     
-    private Statement.If newIfWithCondition()
+    private Statement.If newIfWithCondition(Token openParen)
     {
         Expression condition;
         
@@ -98,7 +98,7 @@ public class IfHandler
         parser.nextToken();
         condition = expressionHandler.handleExpression();
         
-        return new Statement.If(condition);
+        return new Statement.If(condition, openParen.getLineIndex());
     }
     
     private void handleBody(Statement.Block statement, Token openBrace)
@@ -195,7 +195,7 @@ public class IfHandler
         
         if (openParenText.equals("("))
         {
-            handleValidatedElseIf(statement, ifOfTheElse);
+            handleValidatedElseIf(statement, ifOfTheElse, openParen);
         }
         else
         {
@@ -204,7 +204,7 @@ public class IfHandler
     }
     
     private void handleValidatedElseIf(Statement.If statement, 
-        Token ifOfTheElse)
+        Token ifOfTheElse, Token openParen)
     {
         Expression condition;
         Token closeParen;
@@ -218,7 +218,7 @@ public class IfHandler
         
         if (closeParenText.equals(")"))
         {
-            ElseIf elseIf = new ElseIf(condition);
+            ElseIf elseIf = new ElseIf(condition, openParen.getLineIndex());
             
             if (doesIfOrElseIfHaveEmptyBody())
             {
@@ -263,12 +263,12 @@ public class IfHandler
         
         parser.addToken(fakeOpenParen, parser.indexOf(expectedOpenParen));
         
-        handleValidatedElseIf(statement, ifOfTheElse);
+        handleValidatedElseIf(statement, ifOfTheElse, expectedOpenParen);
     }
     
     private void handleElse(Statement.If statement, Token openBrace)
     {
-        Else elseStatement = new Else();
+        Else elseStatement = new Else(openBrace.getLineIndex());
         
         if (doesElseHaveEmptyBody())
         {
