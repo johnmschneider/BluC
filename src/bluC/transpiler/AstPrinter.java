@@ -225,8 +225,15 @@ public class AstPrinter implements Expression.Visitor<String>,
         
         indentationLevel--;
         
-        output += visitElseIfs(statement);
-        output += visitElse(statement);
+        if (!statement.getElseIfs().isEmpty())
+        {
+            output += visitElseIfs(statement);
+        }
+        
+        if (statement.getElse() != null)
+        {
+            output += visitElse(statement);
+        }
         
         return output;
     }

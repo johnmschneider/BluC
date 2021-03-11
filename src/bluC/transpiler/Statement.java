@@ -480,6 +480,10 @@ public abstract class Statement
     
     public static class VarDeclaration extends Statement
     {
+        public static final Token       NO_ASSIGNMENT   = null;
+        public static final Expression  NO_VALUE        = null;
+        public static final long        NO_CLASS_ID     = Long.MIN_VALUE;
+        
         public static enum Sign
         {
             SIGNED,
@@ -520,18 +524,18 @@ public abstract class Statement
         /**
          * How many indirections (asterisks) are declared for this variable
          */
-        private final int pointerLevel;
-        private final Sign sign;
-        private final SimplifiedType simplifiedType;
-        private final Token varName;
-        private final Token assignmentOperator;
-        private final Expression value;
+        private final int               pointerLevel;
+        private final Sign              sign;
+        private final SimplifiedType    simplifiedType;
+        private final Token             varName;
+        private final Token             assignmentOperator;
+        private final Expression        value;
         
         /**
          * If the SimplifiedType is CLASS, then this is set to the classID, 
          *  otherwise it's Long.MIN_VALUE.
          */
-        private long classID = Long.MIN_VALUE;
+        private long classID = NO_CLASS_ID;
         
         public VarDeclaration(Sign sign, SimplifiedType simplifiedType, 
             int pointerLevel, Token varName, Token assignmentOperator, 
@@ -605,6 +609,9 @@ public abstract class Statement
     
     public static class Package extends Statement
     {
+        public static final String  noPackage = null;
+        public static final int     noLineIndex = -1;
+        
         private String fullyQualifiedPackageName;
         
         public Package(String fullyQualifiedPackageName, long startingLineIndex)

@@ -38,6 +38,13 @@ public class BlockHandler
         return newBlock;
     }
     
+    /**
+     * Parses all of the statements, adding them to <b>block</b>, until the
+     *  closing brace of the Block is reached.
+     * 
+     * Expects the parser's current token to be the opening brace of the block
+     *  ("{").
+     */
     public void addStatementsToBlock(
         Token openBrace, Statement.Block block)
     {

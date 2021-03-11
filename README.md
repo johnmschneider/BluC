@@ -12,7 +12,7 @@ I feel the codebase is sufficiently large and designed in such a way that Semant
 This project will now follow the rules of Semantic Versioning.
 
 ### Version
-The current version is <b>0.1.0-alpha</b><br/>
+The current version is <b>0.2.0-alpha</b><br/>
 This follows the Semantic Versioning guidelines.
 ### Setup
 A valid installation of gcc is needed for BluC to automatically compile the C file to an exe. Otherwise, BluC can still transpile the file to C with the "-c" flag being set, but will not be able to automatically compile it to an exe.

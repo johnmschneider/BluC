@@ -10,12 +10,12 @@ import bluC.parser.exceptions.MalformedInt;
  */
 public class Token
 {       
-    public static final String EOF              = "___BluC_eof";
+    public static final String EOF              = "___bluC_eof";
     public static final String NO_TEXT_CONTENT  = "___n/a";
 
-    private TokenInfo       tokenInfo;
-    private TokenFileInfo   fileInfo;
-    private String          package_;
+    private final TokenInfo       tokenInfo;
+    private final TokenFileInfo   fileInfo;
+    private final String          package_;
     
     public Token(TokenInfo tokenInfo, TokenFileInfo fileInfo, String package_)
     {
@@ -32,7 +32,7 @@ public class Token
     {
         this.tokenInfo  = tokenInfo;
         this.fileInfo   = fileInfo;
-        this.package_   = null;
+        this.package_   = Statement.Package.noPackage;
     }
     
     

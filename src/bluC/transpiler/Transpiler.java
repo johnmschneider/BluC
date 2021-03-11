@@ -1,5 +1,6 @@
 package bluC.transpiler;
 
+import bluC.Logger;
 import bluC.parser.Parser;
 import java.util.ArrayList;
 import bluC.transpiler.Statement.If.ElseIf;
@@ -42,24 +43,31 @@ public class Transpiler implements Expression.Visitor<String>,
         lex();
         parse();
         
-        // TODO : only forward-declare funcs/methods/classes that
-        //  require forward declaration to work right (right now 
-        //  we forward-declare all of them)
-        forwardDeclareFuncsClassesAndMethods();
-        printer = new AstPrinter();
-        
-        for (Statement statement : statements)
+        if (!Logger.hasLoggedError())
         {
-            String output = statement.accept(this);
-            
-            if (statement.needsSemicolon())
+            // TODO : only forward-declare funcs/methods/classes that
+            //  require forward declaration to work right (right now 
+            //  we forward-declare all of them)
+            forwardDeclareFuncsClassesAndMethods();
+            printer = new AstPrinter();
+
+            for (Statement statement : statements)
             {
-                output += ";";
+                String output = statement.accept(this);
+
+                if (statement.needsSemicolon())
+                {
+                    output += ";";
+                }
+
+                addToOutputFileContents(output);
+
+                printer.print(statement);
             }
-            
-            addToOutputFileContents(output);
-            
-            printer.print(statement);
+        }
+        else
+        {
+            parser.dumpAstToStdout();
         }
         
         return outputFileContents;

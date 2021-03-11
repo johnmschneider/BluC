@@ -11,13 +11,15 @@ package bluC.transpiler;
  */
 public class TokenInfo
 {
-    private String textContent;
-    private boolean wasEmittedByTranspiler;
+    public static final String NO_TEXT_CONTENT = "<n/a>";
     
-    public TokenInfo(String textContent, boolean wasEmittedByTranspiler)
+    private String  textContent;
+    private boolean wasEmittedByCompiler;
+    
+    public TokenInfo(String textContent, boolean wasEmittedByCompiler)
     {
-        this.textContent = textContent;
-        this.wasEmittedByTranspiler = wasEmittedByTranspiler;
+        this.textContent            = textContent;
+        this.wasEmittedByCompiler = wasEmittedByCompiler;
     }
     
     
@@ -31,13 +33,13 @@ public class TokenInfo
         this.textContent = textContent;
     }
 
-    public boolean isWasEmittedByTranspiler()
+    public boolean getWasEmittedByCompiler()
     {
-        return wasEmittedByTranspiler;
+        return wasEmittedByCompiler;
     }
 
-    public void setWasEmittedByTranspiler(boolean wasEmittedByTranspiler)
+    public void setWasEmittedByCompiler(boolean wasEmittedByCompiler)
     {
-        this.wasEmittedByTranspiler = wasEmittedByTranspiler;
+        this.wasEmittedByCompiler = wasEmittedByCompiler;
     }
 }

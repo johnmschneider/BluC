@@ -19,11 +19,11 @@ import bluC.transpiler.TokenInfo;
  */
 public class BluC
 {
-    public static final String BLU_C_NAMESPACE_PREFIX = "___bluC";
-    private static Transpiler transpiler;
-    private static long transpileStartTime = -1;
-    private static long transpileEndTime = -1;
-    private static long compileEndTime = -1;
+    public static final String  BLU_C_NAMESPACE_PREFIX  = "___bluC";
+    private static Transpiler   transpiler;
+    private static long         transpileStartTime      = -1;
+    private static long         transpileEndTime        = -1;
+    private static long         compileEndTime          = -1;
     
     private static Token getNullTokenWithFilePath(String filePath)
     {
@@ -82,10 +82,12 @@ public class BluC
         String prefix, ArrayList<String> rawFileContents)
     {
         System.out.println(prefix);
+        
         for (String s: rawFileContents)
         {
             System.out.println("\t" + s);
         }
+        
         System.out.println();
     }
     
@@ -96,26 +98,26 @@ public class BluC
         
         try
         {
-            transpiler = new Transpiler(f.getCanonicalPath(), rawFileContents);
-            
-            rawFileContents = transpiler.transpile();
+            transpiler  = new Transpiler(f.getCanonicalPath(), rawFileContents);
+            rawFileContents
+                        = transpiler.transpile();
             
             if (Flags.get("time") != null)
             {
                 transpileEndTime = System.currentTimeMillis();
             }
 
-            String filePathWithoutExtension = args[0].substring(0, 
-                args[0].indexOf("."));
-            String fileNameWithoutExtension = filePathWithoutExtension.
-                substring(filePathWithoutExtension.lastIndexOf("/") + 1, 
-                filePathWithoutExtension.length());
-            String outputCFileName = filePathWithoutExtension + ".c";
-            
-            writeFile(outputCFileName, rawFileContents);
-            
             if (!Logger.hasLoggedError())
             {
+                String filePathWithoutExtension = args[0].substring(0, 
+                args[0].indexOf("."));
+                String fileNameWithoutExtension = filePathWithoutExtension.
+                    substring(filePathWithoutExtension.lastIndexOf("/") + 1, 
+                    filePathWithoutExtension.length());
+                String outputCFileName = filePathWithoutExtension + ".c";
+
+                writeFile(outputCFileName, rawFileContents);
+            
                 if (Flags.get("c") == null || Flags.get("exe") != null)
                 {
                     try
@@ -317,6 +319,12 @@ public class BluC
             {
                 compile(args);
             }
+        }
+        
+        if (Logger.hasLoggedError())
+        {
+            // return error code
+            System.exit(1);
         }
     }
 }

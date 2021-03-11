@@ -6,16 +6,16 @@ package bluC.transpiler;
  */
 public class TokenFileInfo
 {
-    public static final String NO_FILEPATH = "n/a";
-    public static final int NO_LINE_INDEX = -1;
+    public static final String  NO_FILEPATH = "n/a";
+    public static final int     NO_LINE_INDEX = -1;
     
-    private String filePath;
-    private int lineIndex;
+    private String  filePath;
+    private int     lineIndex;
     
     public TokenFileInfo(String filePath, int lineIndex)
     {
-        this.filePath = filePath;
-        this.lineIndex = lineIndex;
+        this.filePath   = filePath;
+        this.lineIndex  = lineIndex;
     }
 
     public String getFilePath()

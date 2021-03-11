@@ -28,7 +28,7 @@ public class Parser
      *  measure only the parse time as a whole, and not that of each parser.
      */
     private static  boolean isFirstParserInitialized = false;
-    private final   boolean  thisInstanceIsFirstParser;
+    private final   boolean thisInstanceIsFirstParser;
     
     private final StatementHandler handler;
     
@@ -37,7 +37,7 @@ public class Parser
         this.lexedTokens    = lexedTokens;
         abstractSyntaxTree  = new ArrayList<>();
         curTokIndex         = -1;
-        currentScope        = new Scope(null, null);
+        currentScope        = new Scope(Scope.ROOT_SCOPE, Scope.NO_SCOPE_TYPE);
         handler             = new StatementHandler(this);
         
         if (isFirstParserInitialized == false)
@@ -359,6 +359,7 @@ public class Parser
     @Override
     public String toString()
     {
-        return "Parser current token:\n" + curToken.toString();
+        return "Parser current token:\n" + curToken.toString() ;/*+ 
+            "\n\nParser current scope:\n" + currentScope.toString();*/
     }
 }

@@ -1,0 +1,14 @@
+1) ALL FUNCTIONS MUST CONTAIN MANGLED TYPE INFORMATION, REGARDLESS OF IF THEY 
+    ARE OVERLOADED.
+1-1) This is to detect incompatible ABIs at link-time (for example, if a
+    function was added or removed).
+1-2) This includes both return type information as well as paremeter type 
+    information
+
+2) NAMES OF PARAMETERS must be included in the mangling
+2-1) This is also to detect incompatible apis, but ones whose abi break is not
+    detectable by just the function signature.
+
+3) all BluC libraries will have a global function named
+    "___bluC[separator][libMangle][separator]getExportedSymbols" which lists all
+    the mangled symbols exported by the library.
