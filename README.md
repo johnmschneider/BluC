@@ -8,13 +8,11 @@ The current build, while compilable, is minimally functional and is only uploade
 
 The BluC compiler is currently undergoing a major rewrite. This compiler is only a prototype, and the actual compiler will be self-hosted.
 
-### Introduction of Semantic Versioning
-I feel the codebase is sufficiently large and designed in such a way that Semantic Versioning between each github push would be highly beneficial.
-
-This project will now follow the rules of Semantic Versioning.
+### License change
+Versions from 0.2.1-alpha and greater (unless specified as a different license) are now licensed under the Apache 2.0 license. This is to allow greater program usage than the GPL provides.
 
 ### Version
-The current version is <b>0.2.0-alpha</b><br/>
+The current version is <b>0.2.1-alpha</b><br/>
 This follows the Semantic Versioning guidelines.
 
 ### Functionality status
