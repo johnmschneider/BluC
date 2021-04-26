@@ -8,6 +8,7 @@ package bluC;
 import bluC.transpiler.Token;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintStream;
 
 /**
  *
@@ -25,21 +26,41 @@ public class Logger
      */
     private static long         bufferSwapTimeMillis    = 200;
     
+    /**
+     * Filepath of the previously logged message.
+     */
+    private static String       prevFilepath            = null;
+    
     public static void warn(Token errAt, String message)
     {
-        System.out.println("[" + errAt.getFilepath() + ", line " + 
-            (errAt.getLineIndex() + 1) + "] " + "Warning: On token \"" + 
-            errAt.getTextContent() + "\"\n\t" + message);
+        printPathIfNecessary(errAt, System.out);
+        
+        System.out.println("    (line " + (errAt.getLineIndex() + 1) + "): " + 
+            "Warning: On token \"" + errAt.getTextContent() + "\"\n\t" + 
+            message);
         
         ensureBufferSynchronization(System.out);
+    }
+    
+    private static void printPathIfNecessary(Token errAt, PrintStream printTo)
+    {
+        String newFilepath = errAt.getFilepath();
+        
+        if (!newFilepath.equals(prevFilepath))
+        {
+            printTo.println("[" + newFilepath + "]:");
+            prevFilepath = newFilepath;
+        }
     }
     
     public static void err(Token errAt, String message)
     {
         hasLoggedError = true;
         
-        System.err.println("[" + errAt.getFilepath() + ", line " + 
-            (errAt.getLineIndex() + 1) + "] " + "Error: On token \"" + 
+        printPathIfNecessary(errAt, System.err);
+        
+        System.err.println("    (line " + 
+            (errAt.getLineIndex() + 1) + "): " + "Error: On token \"" + 
             errAt.getTextContent() + "\"\n\t" + message);
         
         ensureBufferSynchronization(System.err);
@@ -54,12 +75,12 @@ public class Logger
     {
         if (currentBuffer != lastStreamWroteTo)
         {
-            swapAndSynchronizeBuffers(currentBuffer);
+            synchronizeBuffer();
             lastStreamWroteTo = currentBuffer;
         }
     }
     
-    private static void swapAndSynchronizeBuffers(OutputStream newBuffer)
+    private static void synchronizeBuffer()
     {
         try
         {

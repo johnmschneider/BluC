@@ -1,4 +1,23 @@
+/*
+ * Copyright 2021 John Schneider.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package bluC.transpiler;
+
+import bluC.transpiler.statements.vars.VarDeclaration;
+import java.util.Objects;
 
 /**
  *
@@ -62,16 +81,25 @@ public abstract class Expression
     }
     
     public static class Literal extends Expression
-    {   
+    {
         private Token value;
-
+            
         public Literal(Token value)
         {
             super(null, null, null);
             
             this.value = value;
         }
-
+        
+        
+        @Override
+        public boolean isNullLiteral()
+        {
+            return 
+                value.getTextContent().
+                equals("null");
+        }
+        
         public Token getValue()
         {
             return value;
@@ -87,6 +115,45 @@ public abstract class Expression
         {
             return visitor.visitLiteral(this);
         }
+
+        @Override
+        public int hashCode()
+        {
+            int hash = 7;
+            hash = 89 * hash + Objects.hashCode(this.value);
+            hash = 89 * hash + Objects.hashCode(this.getOperator());
+            hash = 89 * hash + Objects.hashCode(this.getOperand1());
+            hash = 89 * hash + Objects.hashCode(this.getOperand2());
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (this == obj)
+            {
+                return true;
+            }
+            if (obj == null)
+            {
+                return false;
+            }
+            if (getClass() != obj.getClass())
+            {
+                return false;
+            }
+            if (!super.equals(obj))
+            {
+                return false;
+            }
+            
+            final Literal other = (Literal) obj;
+            if (!Objects.equals(this.value, other.value))
+            {
+                return false;
+            }
+            return true;
+        }
     }
     
     /**
@@ -94,15 +161,15 @@ public abstract class Expression
      */
     public static class Variable extends Expression
     {
-        private Statement.VarDeclaration variableInfo;
-        
-        public Variable(Statement.VarDeclaration variableInfo)
+        private VarDeclaration variableInfo;
+
+        public Variable(VarDeclaration variableInfo)
         {
             super(variableInfo.getName(), null, null);
-            this.variableInfo = variableInfo;
+            this.variableInfo   = variableInfo;
         }
         
-        public Statement.VarDeclaration getVariableInfo()
+        public VarDeclaration getVariableInfo()
         {
             return variableInfo;
         }
@@ -112,12 +179,51 @@ public abstract class Expression
         {
             return visitor.visitVar(this);
         }
+
+        @Override
+        public int hashCode()
+        {
+            int hash = 3;
+            hash = 67 * hash + Objects.hashCode(this.variableInfo);
+            hash = 67 * hash + Objects.hashCode(this.getOperator());
+            hash = 67 * hash + Objects.hashCode(this.getOperand1());
+            hash = 67 * hash + Objects.hashCode(this.getOperand2());
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (this == obj)
+            {
+                return true;
+            }
+            if (obj == null)
+            {
+                return false;
+            }
+            if (getClass() != obj.getClass())
+            {
+                return false;
+            }
+            if (!super.equals(obj))
+            {
+                return false;
+            }
+            
+            final Variable other = (Variable) obj;
+            if (!Objects.equals(this.variableInfo, other.variableInfo))
+            {
+                return false;
+            }
+            return true;
+        }
     }
     
     public static class Unary extends Expression
     {
         private final boolean operatorIsOnRight;
-        
+            
         public Unary(Token operator, Expression operand1)
         {
             super(operator, operand1, null);
@@ -141,6 +247,47 @@ public abstract class Expression
         {
             return visitor.visitUnary(this);
         }
+
+        @Override
+        public int hashCode()
+        {
+            int hash = 7;
+            hash = 47 * hash + (this.operatorIsOnRight ? 1 : 0);
+            hash = 47 * hash + Objects.hashCode(this.getOperator());
+            hash = 47 * hash + Objects.hashCode(this.getOperand1());
+            hash = 47 * hash + Objects.hashCode(this.getOperand2());
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (this == obj)
+            {
+                return true;
+            }
+            if (obj == null)
+            {
+                return false;
+            }
+            if (getClass() != obj.getClass())
+            {
+                return false;
+            }
+            if (!super.equals(obj))
+            {
+                return false;
+            }
+            
+            final Unary other = (Unary) obj;
+            if (this.operatorIsOnRight != other.operatorIsOnRight)
+            {
+                return false;
+            }
+            return true;
+        }
+        
+        
     }
     
     public Expression(Token operator, Expression operand1, 
@@ -183,4 +330,50 @@ public abstract class Expression
     }
     
     public abstract <T> T accept(Visitor<T> visitor);
+
+    @Override
+    public int hashCode()
+    {
+        int hash = 5;
+        hash = 11 * hash + Objects.hashCode(this.operator);
+        hash = 11 * hash + Objects.hashCode(this.operand1);
+        hash = 11 * hash + Objects.hashCode(this.operand2);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (this == obj)
+        {
+            return true;
+        }
+        if (obj == null)
+        {
+            return false;
+        }
+        if (getClass() != obj.getClass())
+        {
+            return false;
+        }
+        final Expression other = (Expression) obj;
+        if (!Objects.equals(this.operator, other.operator))
+        {
+            return false;
+        }
+        if (!Objects.equals(this.operand1, other.operand1))
+        {
+            return false;
+        }
+        if (!Objects.equals(this.operand2, other.operand2))
+        {
+            return false;
+        }
+        return true;
+    }
+    
+    public boolean isNullLiteral()
+    {
+        return false;
+    }
 }

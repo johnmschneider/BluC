@@ -1,15 +1,37 @@
+/*
+ * Copyright 2021 John Schneider.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package bluC.parser.handlers.statement;
 
 import bluC.parser.handlers.expression.ExpressionHandler;
 import bluC.Logger;
+import bluC.ResultType;
 import bluC.transpiler.Expression;
-import bluC.transpiler.Statement;
-import bluC.transpiler.Statement.VarDeclaration.Sign;
-import bluC.transpiler.Statement.VarDeclaration.SimplifiedType;
+import bluC.transpiler.statements.Statement;
+import bluC.transpiler.statements.vars.Sign;
+import bluC.transpiler.statements.vars.SimplifiedType;
 import bluC.transpiler.Token;
 import bluC.transpiler.TokenFileInfo;
 import bluC.transpiler.TokenInfo;
 import bluC.parser.Parser;
+import bluC.transpiler.statements.ExpressionStatement;
+import bluC.transpiler.statements.Package;
+import bluC.transpiler.statements.Return;
+import bluC.transpiler.statements.vars.VarDeclaration;
+import bluC.transpiler.statements.blocks.Block;
 
 /**
  *
@@ -17,13 +39,29 @@ import bluC.parser.Parser;
  */
 public class StatementHandler
 {
-    private final Parser parser;
+    private final Parser            parser;
     private final ExpressionHandler expressionHandler;
-    private final VariableHandler varHandler;
-    private final FunctionHandler funcHandler;
-    private final BlockHandler blockHandler;
-    private final IfHandler ifHandler;
-    private final ClassHandler classHandler;
+    private final VariableHandler   varHandler;
+    private final FunctionHandler   funcHandler;
+    private final BlockHandler      blockHandler;
+    private final IfHandler         ifHandler;
+    private final ClassHandler      classHandler;
+    private final LoopHandler       loopHandler;
+    
+    public static enum JustParseExprErrCode
+    {
+        UNEXPECTED_END_OF_STATEMENT,
+        MALFORMED_EXPRESSION;
+    }
+        
+    public static class JustParseExprResult extends 
+        ResultType<Expression, JustParseExprErrCode> 
+    {
+        public JustParseExprResult(JustParseExprErrCode errCode)
+        {
+            super(errCode);
+        }
+    }
     
     public StatementHandler(Parser parser)
     {
@@ -37,6 +75,7 @@ public class StatementHandler
             expressionHandler);
         classHandler        = new ClassHandler(parser, varHandler, blockHandler,
             funcHandler);
+        loopHandler         = new LoopHandler(parser, this, blockHandler);
         
         //due to circular references to varHandler we had to create a 
         //  reference to varHandler and THEN retrieve references to the other 
@@ -65,13 +104,19 @@ public class StatementHandler
         Statement returnee = varHandler.handleVarDeclarationOrHigher();
         
         if (checkForSemicolon &&
-            !(returnee instanceof Statement.Block) && !parser.peekMatches(";"))
+            returnee.needsSemicolon() && !parser.peekMatches(";"))
         {
             Token curToken = parser.getCurToken();
             Logger.err(curToken, "Expected \";\" to end statement");
+            
+            // don't move ahead if we're missing a semicolon; the parser is
+            //  already on the right token to resume parsing.
+        }
+        else
+        {
+            parser.nextToken();
         }
         
-        parser.nextToken();
         return returnee;
     }
     
@@ -81,10 +126,10 @@ public class StatementHandler
         
         if (openBrace.getTextContent().equals("{"))
         {
-            Statement.Block block = blockHandler.handleBlock(openBrace);
+            Block block = blockHandler.handleBlock(openBrace);
             return block;
         }
-        else 
+        else
         {
             return handleIfStatementOrHigher();
         }
@@ -115,7 +160,7 @@ public class StatementHandler
         {
             Expression expression = expressionHandler.handleExpression();
 
-            return new Statement.ExpressionStatement(expression, 
+            return new ExpressionStatement(expression, 
                 next.getLineIndex());
         }
         else
@@ -145,23 +190,24 @@ public class StatementHandler
         if (next.getTextContent().equals("return"))
         {
             Statement returnedExpression;
-            Statement.Return return_;
+            Return return_;
             
             parser.nextToken();
             returnedExpression = handleExpressionStatementOrHigher();
             
-            return_ = new Statement.Return(returnedExpression,
+            return_ = new Return(returnedExpression,
                 parser.getCurTokLineIndex());
             
             return return_;
         }
         else
         {
-            return handlePackage();
+            //return handlePackage();
+            return loopHandler.handleLoopOrHigher();
         }
     }
     
-    private Statement handlePackage()
+    public Statement handlePackage()
     {
         Token next = parser.peek();
         
@@ -207,7 +253,7 @@ public class StatementHandler
                     if (parser.getCurTokLineIndex() != 
                         qualifiedNameStartLineIndex)
                     {
-                        return new Statement.Package(fullyQualifiedPackage,
+                        return new Package(fullyQualifiedPackage,
                             startLineIndex);
                     }
                     
@@ -216,7 +262,7 @@ public class StatementHandler
             }
             else if (parser.peekMatches(";"))
             {
-                return new Statement.Package(fullyQualifiedPackage,
+                return new Package(fullyQualifiedPackage,
                     startLineIndex);
             }
 
@@ -251,7 +297,7 @@ public class StatementHandler
         }
         
         //try to synchronize parser
-        return new Statement.VarDeclaration(Sign.UNSPECIFIED, 
+        return new VarDeclaration(Sign.UNSPECIFIED, 
             SimplifiedType.VOID, 0, 
                 
             new Token(
@@ -260,5 +306,44 @@ public class StatementHandler
                 new TokenFileInfo(next.getFilepath(), next.getLineIndex())),
                 
             null, null, parser.getCurTokLineIndex());
+    }
+
+    public JustParseExprResult justParseExpression()
+    {
+        int         startIndex;
+        Expression  rawResult;
+        JustParseExprResult
+                    result;
+        
+        startIndex  = parser.getCurTokIndex();
+        rawResult   = expressionHandler.handleExpression();
+        result      = new JustParseExprResult(
+            JustParseExprErrCode.MALFORMED_EXPRESSION);
+        
+        if (rawResult.isNullLiteral())
+        {
+            // try to determine what went wrong with parsing the expression
+            
+            parser.setToken(startIndex);
+            
+            while (!parser.atEOF())
+            {
+                if (parser.peekMatches(";", "{", "}"))
+                {
+                    result.setErrCode(
+                        JustParseExprErrCode.UNEXPECTED_END_OF_STATEMENT);
+                    break;
+                }
+                
+                parser.nextToken();
+            }
+            // else it's already set to malformed expression
+        }
+        else
+        {
+            result.setData(rawResult);
+        }
+        
+        return result;
     }
 }

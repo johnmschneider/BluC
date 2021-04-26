@@ -1,0 +1,73 @@
+/*char* ex = "test";
+int a = 2;
+a = a + 3;
+a = ex;*/
+char realCharTest = 'x';
+long int x = 0;
+long long b;
+
+/*
+int main(int argc, char** argv)
+{
+    while (x < 70000)
+    {
+        long int y = x;
+        x = x + 1;
+    }
+
+    int iForgotAParen;
+    while iForgotAParen)
+    {
+    }
+
+    int iForgotAnotherParen;
+    while (iForgotAnotherParen
+    {
+    }
+    
+    int iForgotBothParens;
+    while iForgotBothParens
+    {
+    }
+    
+    int iForgotABrace;
+    while (iForgotABrace)
+    }
+
+    int iForgotAnotherBrace;
+    while (iForgotAnotherBrace)
+    {
+        
+}*/
+
+/*
+int main(int hi) {
+    int c = 0;
+    
+    if (c)
+    {
+        printf("example");
+    }
+    
+    return 0;
+}*/
+
+/*
+class Test {
+    int hi;
+    
+    void hello() {
+        
+    }
+};
+
+int main() {
+    Test test();
+    test.hello();
+    return 0;
+}*/
+
+//(var-declaration unspecified char *ex (= "test"))	"/* end stmt line 1 */"
+//(expression-statement null)	"/* end stmt line 18 */"
+//(expression-statement null)	"/* end stmt line 25 */"
+//(return (expression-statement 0))	"/* end stmt line 26 */"

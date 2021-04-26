@@ -1,13 +1,34 @@
+/*
+ * Copyright 2021 John Schneider.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package bluC.parser;
 
 import bluC.Flags;
 import java.util.ArrayList;
 import bluC.Logger;
+import bluC.Utils;
 import bluC.transpiler.AstPrinter;
 import bluC.transpiler.Scope;
-import bluC.transpiler.Statement;
+import bluC.transpiler.statements.Statement;
 import bluC.transpiler.Token;
 import bluC.parser.handlers.statement.StatementHandler;
+import bluC.parser.handlers.statement.StatementHandler.JustParseExprResult;
+import bluC.transpiler.statements.blocks.ClassDef;
+import java.util.Arrays;
+import java.util.Objects;
 
 /**
  *
@@ -15,6 +36,11 @@ import bluC.parser.handlers.statement.StatementHandler;
  */
 public class Parser
 {
+    public static final boolean BLOCK_DID_END       = true;
+    public static final boolean BLOCK_DID_NOT_END   = false;
+    public static final boolean STATEMENT_DID_END          = true;
+    public static final boolean STATEMENT_DID_NOT_END      = true;
+    
     private final ArrayList<Token>      lexedTokens;
     private final ArrayList<Statement>  abstractSyntaxTree;
     private int     curTokIndex;
@@ -37,7 +63,7 @@ public class Parser
         this.lexedTokens    = lexedTokens;
         abstractSyntaxTree  = new ArrayList<>();
         curTokIndex         = -1;
-        currentScope        = new Scope(Scope.ROOT_SCOPE, Scope.NO_SCOPE_TYPE);
+        currentScope        = new Scope(Scope.NO_PARENT, Scope.NO_SCOPE_TYPE);
         handler             = new StatementHandler(this);
         
         if (isFirstParserInitialized == false)
@@ -49,6 +75,12 @@ public class Parser
         {
             thisInstanceIsFirstParser = false;
         }
+    }
+    
+    public Parser(ArrayList<Token> lexedTokens, Scope parentScope)
+    {
+        this(lexedTokens);
+        currentScope = parentScope;
     }
     
     
@@ -97,14 +129,19 @@ public class Parser
             }
             catch (Exception ex)
             {
+                String stackTrace = Arrays.deepToString(ex.getStackTrace()).
+                        replace(", ", "\n");
+                
                 Logger.err(curToken, "Fatal parse error resulted in uncaught " +
-                    "java.lang.Exception:\n" + ex.getMessage() + 
-                    "\n\nDumping parse tree below:\n\n" + dumpAstToString());
+                    "java.lang.Exception whose type is " + ex.getClass().
+                    getTypeName() + ":\n" + stackTrace + "\n\nDumping parse " +
+                    "tree below:\n\n" + dumpAstToString());
             }
             catch (Error err)
             {
                 Logger.err(curToken, "Fatal parse error resulted in uncaught " +
-                    "java.lang.Throwable.Error:\n" + err.getMessage() + 
+                    "java.lang.Throwable.Error whose type is " + err.
+                    getClass().getTypeName() + ":\n" + err.getMessage() + 
                     "\n\nDumping parse tree below:\n\n" + dumpAstToString());
             }
             catch (Throwable t)
@@ -114,7 +151,8 @@ public class Parser
                 //  classes simply derive Throwable in this project)
                 Logger.err(curToken, "Fatal parse error resulted in uncaught " +
                     "java.lang.Throwable which is neither an Exception or " +
-                    "Error:\n" + "class == " + t.getClass().getTypeName() +
+                    "Error whose type is " + t.getClass().getTypeName() + 
+                    ":\n" + "class == " + t.getClass().getTypeName() +
                     "\n" + t.getMessage() + "\n\n" + dumpAstToString());
             }
             
@@ -263,6 +301,22 @@ public class Parser
         return curTokText;
     }
     
+    public boolean curTextMatches(String... textToMatch)
+    {
+        String curText = getCurTokText();
+        
+        for (String s : textToMatch)
+        {
+            // use Objects.equals so it's null safe
+            if (Objects.equals(curText, s))
+            {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
     /**
      * Returns the index of the current token in the LEXED TOKENS ArrayList.
      */
@@ -291,12 +345,80 @@ public class Parser
         }
     }
     
-    public void gotoEndOfStatement()
+    /**
+     * Attempts to advance to the end of the statement.
+     * 
+     * Returns true if an end was actually found, false otherwise.
+     */
+    public boolean gotoEndOfStatement(TokenListener listener)
     {
-        while (!peekMatches(";") && !atEOF())
+        boolean didEnd = STATEMENT_DID_NOT_END;
+        
+        while (!atEOF())
         {
+            listener.onNextToken(getCurToken());
+            
+            if (peekMatches(";"))
+            {
+                didEnd = STATEMENT_DID_END;
+                break;
+            }
+            
             nextToken();
         }
+        
+        return didEnd;
+    }
+    
+    public boolean gotoEndOfStatement()
+    {
+        return gotoEndOfStatement(new TokenListener()
+        {
+            @Override
+            public void onNextToken(Token nextToken)
+            {
+                //no listener needed
+            }
+
+            @Override
+            public boolean continueGoto(Token nextToken)
+            {
+                return true;
+            }
+        });
+    }
+    
+    public boolean gotoEndOfBlock()
+    {
+        int openBraceCount = 1;
+        
+        while (true)
+        {
+            if (peekMatches("}"))
+            {
+                openBraceCount--;
+                
+                if (openBraceCount == 0)
+                {
+                    // set parser's current token to the closing brace
+                    //  of the block "}"
+                    nextToken();
+                    break;
+                }
+            }
+            else if (peekMatches("{"))
+            {
+                openBraceCount++;
+            }
+            
+            nextToken();
+            if (atEOF())
+            {
+                return BLOCK_DID_NOT_END;
+            }
+        }
+        
+        return BLOCK_DID_END;
     }
     
     public boolean isInAClass()
@@ -305,7 +427,7 @@ public class Parser
         
         while (currentSearchScope != null)
         {
-            if (currentSearchScope.getScopeType() instanceof Statement.ClassDef)
+            if (currentSearchScope.getScopeType() instanceof ClassDef)
             {
                 return true;
             }
@@ -338,7 +460,16 @@ public class Parser
         {
             //this should never happen so it is an error if it does
             
-            //this will keep parsing (for further errors) but will not compile
+            /**
+             * Upon further inspection of Java exceptions it appears to be
+             *  calling terminate/some sort of exit method when the exception
+             *  is either thrown or printStackTrace'd
+             */
+            // TODO - change this from an exception to some other error recovery
+            //  mechanism
+            
+            //this *should* keep parsing (for further errors) but will stop the 
+            //  compile to C IR.
             Logger.err(causeOfPop, "Fatal parse error");
             
             //printStackTrace an exception so we get the stack frame in question
@@ -354,12 +485,84 @@ public class Parser
     }
     
     /**
-     * For use in debugging.
+     * For use by a debugger.
      */
     @Override
     public String toString()
     {
-        return "Parser current token:\n" + curToken.toString() ;/*+ 
-            "\n\nParser current scope:\n" + currentScope.toString();*/
+        return "Parser current token:\n" + curToken.toString() + 
+            "\n\nParser current scope:\n" + currentScope.toString();
+    }
+    
+    @Override
+    public boolean equals(Object other)
+    {
+        if (other instanceof Parser)
+        {
+            Parser otherParser = (Parser) other;
+            
+            return
+                abstractSyntaxTree.equals(otherParser.abstractSyntaxTree) &&
+                getCurTokIndex() == otherParser.getCurTokIndex() && 
+                curTokTextEquals(otherParser) &&
+                curTokEquals(otherParser) &&
+                curScopeEquals(otherParser) && 
+                lexedTokEquals(otherParser);
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    @Override
+    public int hashCode()
+    {
+        int hash = 7;
+        hash = 13 * hash + Objects.hashCode(this.lexedTokens);
+        hash = 13 * hash + Objects.hashCode(this.abstractSyntaxTree);
+        hash = 13 * hash + this.curTokIndex;
+        hash = 13 * hash + Objects.hashCode(this.curToken);
+        hash = 13 * hash + Objects.hashCode(this.curTokText);
+        hash = 13 * hash + Objects.hashCode(this.currentScope);
+        return hash;
+    }
+    
+    private boolean curTokTextEquals(Parser other)
+    {
+        String curText = getCurTokText();
+        
+        return Utils.<Parser, String> nullSafeEquals(
+            this, curText, other, other.getCurTokText());
+    }
+    
+    private boolean curTokEquals(Parser other)
+    {
+        Token curTok = getCurToken();
+        
+        return Utils.<Parser, Token> nullSafeEquals(
+            this, curTok, other, other.getCurToken());
+    }
+    
+    private boolean curScopeEquals(Parser other)
+    {
+        Scope curScope = getCurrentScope();
+        
+        return Utils.<Parser, Scope> nullSafeEquals(
+            this, curScope, other, other.getCurrentScope());
+    }
+    
+    private boolean lexedTokEquals(Parser other)
+    {
+        return Utils.<Parser, ArrayList<Token>> nullSafeEquals(
+            this, lexedTokens, other, other.lexedTokens);
+    }
+    
+    /**
+     * Parses only an expression. On error, returns appropriate error code.
+     */
+    public JustParseExprResult justParseExpression()
+    {
+        return handler.justParseExpression();
     }
 }

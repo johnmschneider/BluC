@@ -1,0 +1,51 @@
+package bluC.lang:
+
+/**
+ * Represents the minimal amount of information that *must* be passed
+ *  (via reference) to each function/method in order to properly terminate 
+ *  on a stack overflow.
+ * 
+ * Certain compiler flags may embed more debugging information into this class,
+ *  but they must at least have the behavior defined here. 
+ */
+class StackFrame
+{
+public static:
+    const(int) MAX_STACK_CALL_DEPTH;
+    
+    void initMaxCallDepth(int maxCallDepth)
+    {
+        MAX_STACK_CALL_DEPTH = maxCallDepth;
+    }
+    
+private:
+    int currentStackCallDepth;
+    
+public:
+    this()
+    {
+        currentStackCallDepth = 0;
+    }
+    
+    /**
+     * These should be automatically inlined by the bluC compiler, but make sure
+     *  they are anyways.
+     */
+    inline set currentStackCallDepth;
+    inline get currentStackCallDepth;
+    
+    inline pushCallDepth()
+    {
+        currentStackCallDepth++;
+        
+        if (currentStackCallDepth == MAX_STACK_CALL_DEPTH)
+        {
+            lob bluC.lang.exceptions.StackOverflow();
+        }
+    }
+    
+    inline popCallDepth()
+    {
+        currentStackCallDepth--;
+    }
+}

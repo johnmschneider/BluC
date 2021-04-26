@@ -12,7 +12,7 @@ The BluC compiler is currently undergoing a major rewrite. This compiler is only
 Versions from 0.2.1-alpha and greater (unless specified as a different license) are now licensed under the Apache 2.0 license. This is to allow greater program usage than the GPL provides.
 
 ### Version
-The current version is <b>0.2.1-alpha</b><br/>
+The current version is <b>0.3.0-alpha</b><br/>
 This follows the Semantic Versioning guidelines.
 
 ### Functionality status

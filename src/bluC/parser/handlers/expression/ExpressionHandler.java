@@ -1,8 +1,23 @@
+/*
+ * Copyright 2021 John Schneider.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package bluC.parser.handlers.expression;
 
 import bluC.Logger;
 import bluC.transpiler.Expression;
-import bluC.transpiler.Statement;
 import bluC.transpiler.Token;
 import bluC.transpiler.TokenFileInfo;
 import bluC.transpiler.TokenInfo;
@@ -10,72 +25,200 @@ import bluC.parser.Parser;
 import bluC.parser.exceptions.MalformedNumber;
 import bluC.parser.handlers.statement.StatementHandler;
 import bluC.parser.handlers.statement.VariableHandler;
+import bluC.transpiler.Expression.Binary;
+import bluC.transpiler.statements.vars.VarDeclaration;
 
 /**
  * @author John Schneider
  */
 public class ExpressionHandler
 {
-    private Parser parser;
-    private VariableHandler varHandler;
-    private ObjectHandler objectHandler;
+    private final Parser          parser;
+    private final VariableHandler varHandler;
+    private final ObjectHandler   objectHandler;
     
     public ExpressionHandler(Parser parser, StatementHandler statementHandler)
     {
-        this.parser = parser;
-        varHandler = statementHandler.getVarHandler();
-        objectHandler = new ObjectHandler(parser, this);
+        this.parser     = parser;
+        varHandler      = statementHandler.getVarHandler();
+        objectHandler   = new ObjectHandler(parser, this);
     }
-    
     
     public Expression handleExpression()
     {
-        return handleAssignmentOrHigher();
+        return handlePreDeclAssignmentOrHigher();
     }
-
-    private Expression handleAssignmentOrHigher()
+    
+    /**
+     * Handles an expression assigning a value to a variable that has not yet
+     *  been declared (presumably as part of a VarDeclaration).
+     * 
+     * Expects to be on the token immediately before the "=".
+     */
+    private Expression handlePreDeclAssignmentOrHigher()
     {
-        Expression expression = handleEqualityOrHigher();
-        Token potentialOperator;
-        parser.nextToken();
-        potentialOperator = parser.getCurToken();
+        Expression result;
+        
+        if (parser.peekMatches("="))
+        {
+            // move to "="
+            parser.nextToken();
+        }
+
+        result = handlePostDeclAssignmentOrHigher();
+        if (result == null)
+        {
+            // TODO - temp test for debugging
+            System.err.println("RESULT IS NULL:");
+            new NullPointerException().printStackTrace();
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Handles an expression assigning a value to a variable that has already
+     *  been declared.
+     * 
+     * Expects to be on the token immediately before the start of the left-hand
+     *  expression.
+     */
+    private Expression handlePostDeclAssignmentOrHigher()
+    {
+        Token       potentialOperator;
+        Expression  leftOperand;
+        
+        leftOperand         = handleEqualityOrHigher();
+        potentialOperator   = parser.peek();
         
         if (potentialOperator.getTextContent().equals("="))
         {
-            if (expression instanceof Expression.Variable)
-            {
-                Expression target = expression;
-                Expression value;
-                value = handleAssignmentOrHigher();
-                return new Expression.Assignment(potentialOperator, target, 
-                    value);
-            } else
-            {
-                Logger.err(potentialOperator, "Left expression of " +
-                    "assignment operator must be a variable");
-            }
+            // move to "="
+            parser.nextToken();
+            
+            Binary assignment = new Binary(
+                potentialOperator, leftOperand,
+                handlePostDeclAssignmentOrHigher());
+            
+            return assignment;
         }
         
-        parser.prevToken();
-        return expression;
+        return leftOperand;
     }
     
     private Expression handleEqualityOrHigher()
     {
-        Expression expression = handleComparisonOrHigher();
+        boolean     currentOperatorIsEquality = false;
+        int         startIndex;
         
-        while (parser.peekMatches("!=", "=="))
+        startIndex          = parser.getCurTokIndex();
+        
+        while (!parser.atEOF())
+        {
+            if (parser.peekMatches("!=", "=="))
+            {
+                currentOperatorIsEquality = true;
+                break;
+            }
+            else if(parser.peekMatches(";", "(", ")", "{", "}"))
+            {
+                break;
+            }
+            
+            parser.nextToken();
+        }
+        
+        parser.setToken(startIndex);
+        
+        Expression result;
+        if (currentOperatorIsEquality)
+        {
+            result = parseEquality();
+        }
+        else 
+        {
+            result = handleComparisonOrHigher();
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Parses equality expression.
+     * 
+     * Expects to be on the starting token of the expression.
+     * 
+     * Leaves parser on end token of the expression.
+     */
+    private Expression parseEquality()
+    {
+        Expression left     = handleComparisonOrHigher();
+        Expression right    = null;
+        Binary     result   = null;
+        
+        // handle first comparison
+        if (parser.peekMatches("!=", "=="))
         {
             parser.nextToken();
             Token operator = parser.getCurToken();
             
-            Expression right = handleComparisonOrHigher();
-            expression = new Expression.Binary(operator, expression, right);
+            right = handleComparisonOrHigher();
+            result = new Expression.Binary(
+                operator, left, right);
         }
         
-        return expression;
+        // handle any further comparisons chained together
+        while (parser.peekMatches("!=", "=="))
+        {
+            parser.nextToken();
+            Token operator = parser.getCurToken();
+
+            left     = right;
+            right    = handleComparisonOrHigher();
+            result   = new Expression.Binary(
+                operator, left, right);
+        }
+        
+        return (result == null ? left : result);
     }
     
+    // TODO: move this into static analysis/type checker, really anything other
+    //  than the parser..
+    /**
+     * Prints out bad operand message and 
+     */
+    /*private Expression handleBadEqualityLeftOp(
+        ArrayList<Token> expressionSoFar, Token firstOperatorFound)
+    {
+        String output = "l-value \"";
+        
+        for (int i = 0; i < expressionSoFar.size() - 1; i++)
+        {
+            Token t = expressionSoFar.get(i);
+            output += t.getTextContent() + " ";
+        }
+        
+        output += expressionSoFar.get(expressionSoFar.size()) + 
+            "\" is not able to be used with infix operator " + 
+            firstOperatorFound.getTextContent();
+        
+        
+        Expression.Literal nullLit = createNullLiteral(
+            firstOperatorFound.getFilepath(),
+            firstOperatorFound.getLineIndex());
+        
+        Binary resultToSyncParser = 
+            new Binary(firstOperatorFound, nullLit, nullLit);
+        
+        return resultToSyncParser;
+    }*/
+    
+    /**
+     * Expects the peek() to be a comparison expression or higher.
+     * 
+     * Leaves the parser on the ending token of whatever expression
+     *  it managed to match (or the best-fit token for synchronization).
+     */
     private Expression handleComparisonOrHigher()
     {
         Expression expression = handleAdditionOrHigher();
@@ -91,7 +234,13 @@ public class ExpressionHandler
         
         return expression;
     }
-
+    
+    /**
+     * Expects the peek() to be a n addition expression or higher.
+     * 
+     * Leaves the parser on the ending token of whatever expression
+     *  it managed to match (or the best-fit token for synchronization).
+     */
     private Expression handleAdditionOrHigher()
     {
         Expression expression = handleMultiplicationOrHigher();
@@ -158,7 +307,7 @@ public class ExpressionHandler
         {
             if (parser.peekMatches("false") || parser.peekMatches("true") ||
                 parser.peekMatches("null") || next.isNumber() || 
-                next.isString())
+                next.isStringLiteral() || next.isCharLiteral())
             {
                 parser.nextToken();
                 Token literal = parser.getCurToken();
@@ -182,7 +331,7 @@ public class ExpressionHandler
     
     private Expression handleHighestPrecedence()
     {
-        Expression expression = handleVariableOrHigher();
+        Expression expression = handleVariable();
         
         if (expression == null)
         {
@@ -207,13 +356,25 @@ public class ExpressionHandler
         
         //if we reached here then something went wrong with the parsing,
         //  so throw an error
+        
+        // TODO - fix this, it logs an error before it returns back to the
+        //  other statement handlers to try and match a different grammar.
         return handleInvalidStartOfExpression();
     }
     
-    private Expression handleVariableOrHigher()
+    /**
+     * Attempts to parse the next token as a variable usage, returns null if
+     *  this failed.
+     * 
+     * Expects to be on the token immediately before a variable declaration.
+     * 
+     * @param isLvalue - whether or not this is on the left hand side of
+     *  an expression.
+     */
+    private Expression handleVariable()
     {
         Token potentialVarName = parser.peek();
-        Statement.VarDeclaration varInfo = 
+        VarDeclaration varInfo = 
             varHandler.getVarAlreadyDeclaredInThisScopeOrHigher
             (potentialVarName);
         Expression returnee = null;
@@ -330,4 +491,14 @@ public class ExpressionHandler
                 
             new TokenFileInfo(next.getFilepath(), next.getLineIndex())));
     }
+    
+    public static Expression.Literal createNullLiteral(String filePath, 
+        int lineIndex)
+    {
+        return new Expression.Literal(new Token(
+            new TokenInfo("null", true),
+                
+            new TokenFileInfo(filePath, lineIndex)));
+    }
+    
 }

@@ -1,14 +1,36 @@
+/*
+ * Copyright 2021 John Schneider.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package bluC.parser.handlers.statement;
 
 import bluC.Logger;
 import bluC.BluC;
 import bluC.transpiler.Scope;
-import bluC.transpiler.Statement;
+import bluC.transpiler.statements.Statement;
 import bluC.transpiler.Token;
 import bluC.parser.Parser;
-import bluC.transpiler.Statement.VarDeclaration;
+import bluC.transpiler.statements.blocks.ClassDef;
+import bluC.transpiler.statements.blocks.Method;
+import bluC.transpiler.statements.blocks.Function;
+import bluC.transpiler.statements.ParameterList;
 import bluC.transpiler.TokenFileInfo;
 import bluC.transpiler.TokenInfo;
+import bluC.transpiler.statements.vars.Sign;
+import bluC.transpiler.statements.vars.SimplifiedType;
+import bluC.transpiler.statements.vars.VarDeclaration;
 
 /**
  *
@@ -33,8 +55,8 @@ public class FunctionHandler
         varHandler = statementHandler.getVarHandler();
     }
     
-    public Statement handleFunctionOrMethod(VarDeclaration.Sign returnSign, 
-        VarDeclaration.SimplifiedType returnSimplifiedType)
+    public Statement handleFunctionOrMethod(Sign returnSign, 
+        SimplifiedType returnSimplifiedType)
     {
         if (parser.isInAClass())
         {
@@ -44,10 +66,10 @@ public class FunctionHandler
         return handleFunction(returnSign, returnSimplifiedType);
     }
     
-    private Statement handleFunction(VarDeclaration.Sign returnSign, 
-        VarDeclaration.SimplifiedType returnSimplifiedType)
+    private Statement handleFunction(Sign returnSign, 
+        SimplifiedType returnSimplifiedType)
     {
-        Statement.Function function = getFuncOrMethod(returnSign, 
+        Function function = getFuncOrMethod(returnSign, 
             returnSimplifiedType);
         
         parser.pushScope(new Scope(parser.getCurrentScope(), function));
@@ -57,12 +79,12 @@ public class FunctionHandler
         return function;
     }
     
-    private Statement.Function getFuncOrMethod(VarDeclaration.Sign returnSign, 
-        VarDeclaration.SimplifiedType returnSimplifiedType) 
+    private Function getFuncOrMethod(Sign returnSign, 
+        SimplifiedType returnSimplifiedType) 
     {
         int returnPointerLevel = varHandler.getPointerLevel();
-        Statement.VarDeclaration returnType;
-        Statement.Function function;
+        VarDeclaration returnType;
+        Function function;
         Token functionName;
 
         parser.nextToken();
@@ -70,15 +92,15 @@ public class FunctionHandler
         functionName = parser.getCurToken();
         returnType = getReturnTypeVar(returnSign, returnSimplifiedType, 
             returnPointerLevel);
-        function = new Statement.Function(returnType, functionName,
+        function = new Function(returnType, functionName,
             functionName.getLineIndex());
         
         return function;
     }
     
-    private Statement.VarDeclaration getReturnTypeVar(
-        VarDeclaration.Sign returnTypeSign, 
-        VarDeclaration.SimplifiedType returnTypeType, 
+    private VarDeclaration getReturnTypeVar(
+        Sign returnTypeSign, 
+        SimplifiedType returnTypeType, 
         int returnTypePointerLevel)
     {
         Token curToken = parser.getCurToken();
@@ -88,21 +110,21 @@ public class FunctionHandler
             new TokenFileInfo(curToken.getFilepath(), 
                 curToken.getLineIndex()));
 
-        return new Statement.VarDeclaration(returnTypeSign, returnTypeType, 
+        return new VarDeclaration(returnTypeSign, returnTypeType, 
             returnTypePointerLevel, varName, null, null,
             curToken.getLineIndex());
     }
     
-    public Statement handleMethod(VarDeclaration.Sign returnSign, 
-        VarDeclaration.SimplifiedType returnSimplifiedType)
+    public Statement handleMethod(Sign returnSign, 
+        SimplifiedType returnSimplifiedType)
     {
-        Statement.Function rawMethod = 
+        Function rawMethod = 
             getFuncOrMethod(returnSign, returnSimplifiedType);
         
-        Statement.ClassDef curClass = (Statement.ClassDef) (parser.
+        ClassDef curClass = (ClassDef) (parser.
             getCurrentScope().getScopeType());
         
-        Statement.Method method = new Statement.Method(curClass, 
+        Method method = new Method(curClass, 
             rawMethod.getReturnType(), rawMethod.getNameToken(), 
             getMangledMethodName(curClass, rawMethod),
             parser, rawMethod.getStartingLineIndex());
@@ -114,8 +136,8 @@ public class FunctionHandler
         return method;
     }
     
-    private String getMangledMethodName(Statement.ClassDef curClass,
-        Statement.Function rawMethod)
+    private String getMangledMethodName(ClassDef curClass,
+        Function rawMethod)
     {
         return BluC.BLU_C_NAMESPACE_PREFIX + "_" + ClassHandler.
             CLASS_NAMESPACE_PREFIX + "_" + curClass.getClassName().
@@ -124,7 +146,7 @@ public class FunctionHandler
         //TODO : add package support in mangling
     }
     
-    private Statement handleMethodDeclaration(Statement.Method method)
+    private Statement handleMethodDeclaration(Method method)
     {
         handleGlobalFunctionDeclaration(method);
         
@@ -132,7 +154,7 @@ public class FunctionHandler
     }
     
     private void handleGlobalFunctionDeclaration(
-        Statement.Function function)
+        Function function)
     {
         if (function.hasValidName())
         {
@@ -152,9 +174,9 @@ public class FunctionHandler
      *  function name).
      */
     private void handleGlobalFunctionDeclarationWithValidReturnTypeAndName(
-        Statement.Function functionWithRetTypeAndName)
+        Function functionWithRetTypeAndName)
     {
-        Statement.ParameterList params;
+        ParameterList params;
         Token next;
         Token functionName = functionWithRetTypeAndName.getNameToken();
         
@@ -191,7 +213,7 @@ public class FunctionHandler
         }
     }
     
-    private Statement.ParameterList getFunctionParameters(Token functionName)
+    private ParameterList getFunctionParameters(Token functionName)
     {
         Token expectedOpenParen = parser.peek();
         
@@ -200,10 +222,21 @@ public class FunctionHandler
             //move parser to "(" token
             parser.nextToken();
             
-            Statement.ParameterList returnee = new Statement.ParameterList(
+            ParameterList returnee = new ParameterList(
                 parser.peek().getLineIndex());
             
-            addParametersToParameterList(returnee, functionName);
+            if (!parser.peekMatches(")"))
+            {
+                addParametersToParameterList(returnee, functionName);
+            }
+            else
+            {
+                // move to ")"
+                parser.nextToken();
+                
+                // TODO - implement functionality described below
+                // later on in the parser we will insert void so c is happy
+            }
             
             return returnee;
         }
@@ -211,11 +244,19 @@ public class FunctionHandler
         {
             Logger.err(expectedOpenParen, "Expected \"(\" to start parameter " +
                 "list for function \"" + functionName.getTextContent() + "\"");
-            return new Statement.ParameterList(parser.peek(2).getLineIndex());
+            return new ParameterList(parser.peek(2).getLineIndex());
         }
     }
     
-    private void addParametersToParameterList(Statement.ParameterList params,
+    /**
+     * Adds parameters to <b>params</b>.
+     * 
+     * Expects to be on opening paren "(" of the parameter list for the
+     *  function.
+     * 
+     * Ends on the closing paren ")" of the function's parameter list.
+     */
+    private void addParametersToParameterList(ParameterList params,
         Token functionName)
     {
         boolean closingParenFound   = false;
@@ -237,7 +278,7 @@ public class FunctionHandler
                 break;
             }
             
-            params.addParameter((Statement.VarDeclaration) 
+            params.addParameter((VarDeclaration) 
                 varHandler.handleVarDeclarationOrHigher());
             
             parser.nextToken();
@@ -252,7 +293,7 @@ public class FunctionHandler
     }
     
     private void handleBadGlobalFunctionName(
-        Statement.Function function)
+        Function function)
     {
         Token funcName = function.getNameToken();
         

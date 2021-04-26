@@ -1,16 +1,34 @@
+/*
+ * Copyright 2021 John Schneider.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package bluC.parser.handlers.statement;
 
 import bluC.Logger;
 import bluC.transpiler.Expression;
 import bluC.transpiler.Scope;
-import bluC.transpiler.Statement;
-import bluC.transpiler.Statement.If.Else;
-import bluC.transpiler.Statement.If.ElseIf;
+import bluC.transpiler.statements.Statement;
+import bluC.transpiler.statements.blocks.If.Else;
+import bluC.transpiler.statements.blocks.If.ElseIf;
 import bluC.transpiler.Token;
 import bluC.transpiler.TokenFileInfo;
 import bluC.transpiler.TokenInfo;
 import bluC.parser.Parser;
 import bluC.parser.handlers.expression.ExpressionHandler;
+import bluC.transpiler.statements.blocks.If;
+import bluC.transpiler.statements.blocks.Block;
 
 /**
  *
@@ -53,7 +71,7 @@ public class IfHandler
     private Statement handleOpenParenthesisAndCondition(Token openParen,
         Token potentialIf)
     {
-        Statement.If statement = newIfWithCondition(openParen);
+        If statement = newIfWithCondition(openParen);
         Token closeParen = parser.peek();
         
         if (closeParen.getTextContent().equals(")"))
@@ -90,7 +108,7 @@ public class IfHandler
         return parser.peekMatches(3, "}");
     }
     
-    private Statement.If newIfWithCondition(Token openParen)
+    private If newIfWithCondition(Token openParen)
     {
         Expression condition;
         
@@ -98,10 +116,10 @@ public class IfHandler
         parser.nextToken();
         condition = expressionHandler.handleExpression();
         
-        return new Statement.If(condition, openParen.getLineIndex());
+        return new If(condition, openParen.getLineIndex());
     }
     
-    private void handleBody(Statement.Block statement, Token openBrace)
+    private void handleBody(Block statement, Token openBrace)
     {
         //consume ")" and set curToken == "{"
         parser.nextToken();
@@ -141,7 +159,7 @@ public class IfHandler
             potentialIf);
     }
     
-    private void handleElseIfs(Statement.If statement)
+    private void handleElseIfs(If statement)
     {
         Token else_;
         
@@ -162,7 +180,7 @@ public class IfHandler
         }
     }
     
-    private void handleElseIfCheck(Statement.If statement, Token else_)
+    private void handleElseIfCheck(If statement, Token else_)
     {
         Token ifOrOpenBrace;
         String ifOrOpenBraceText;
@@ -188,7 +206,7 @@ public class IfHandler
         }
     }
     
-    private void handleElseIf(Statement.If statement, Token ifOfTheElse)
+    private void handleElseIf(If statement, Token ifOfTheElse)
     {
         Token openParen = parser.peek();
         String openParenText = openParen.getTextContent();
@@ -203,7 +221,7 @@ public class IfHandler
         }
     }
     
-    private void handleValidatedElseIf(Statement.If statement, 
+    private void handleValidatedElseIf(If statement, 
         Token ifOfTheElse, Token openParen)
     {
         Expression condition;
@@ -246,7 +264,7 @@ public class IfHandler
     }
     
     
-    private void handleElseIfNoOpenParenthesis(Statement.If statement,
+    private void handleElseIfNoOpenParenthesis(If statement,
         Token ifOfTheElse, Token expectedOpenParen)
     {
         Token fakeOpenParen;
@@ -266,7 +284,7 @@ public class IfHandler
         handleValidatedElseIf(statement, ifOfTheElse, expectedOpenParen);
     }
     
-    private void handleElse(Statement.If statement, Token openBrace)
+    private void handleElse(If statement, Token openBrace)
     {
         Else elseStatement = new Else(openBrace.getLineIndex());
         

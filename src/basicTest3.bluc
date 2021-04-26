@@ -1,0 +1,110 @@
+
+///*char* ex = "test";
+//int a = 2;
+//a = a + 3;
+//a = ex;
+//int doIntsStillWork; // yes
+char realCharTest = 'x';
+long int x = 0;
+long long b;//*/
+
+///*
+// test parse time for VALID while loops
+int main(int argc, char** argv)
+{
+    while (x < 70000)
+    {
+        long int y = x;
+        x = x + 1;
+    }
+    
+    int iForgotAParen = 1;
+    while (iForgotAParen == 0)
+    {
+        int isItEmptyBlockThatsDoingIt; // also yes
+    }
+    
+    // does regular empty block corrupt parser?
+    {
+        // yes
+    }
+    
+    int iForgotAnotherParen = 1;
+    while (iForgotAnotherParen == 0)
+    {
+    }
+    
+    // test if block parsing also errors
+    {
+        // yes the prior empty block corrupted parser
+    }
+    
+    int iForgotBothParens = 1;
+    while (iForgotBothParens == 0)
+    {
+    }
+    
+    int iForgotABrace = 1;
+    while (iForgotABrace == 0)
+    {
+    }
+
+
+    int iForgotAnotherBrace = 0;
+    while (iForgotAnotherBrace)
+    {
+    }
+}
+
+int outsideBadBlock;//*/
+
+/*
+int main(int argc, char** argv)
+{
+    return 0;
+}
+
+/*
+int main(int argc, char** argv) {
+    int c = 0;
+    
+    if (c)
+    {
+        printf("example");
+    }
+    
+    return 0;
+}//*/
+
+/*
+void badThing()
+{
+    int a
+
+    while (a)
+    {
+    }
+}*/
+
+int afterBadFunc;
+
+/*
+class Test {
+    int hi;
+    
+    void hello(int a) {
+        
+    }
+}
+
+int main(int plsCompile) {
+    Test test{};
+    test.hello();
+    return 0;
+}//*/
+
+
+//(var-declaration unspecified char *ex (= "test"))	"/* end stmt line 1 */"
+//(expression-statement null)	"/* end stmt line 18 */"
+//(expression-statement null)	"/* end stmt line 25 */"
+//(return (expression-statement 0))	"/* end stmt line 26 */"

@@ -1,17 +1,38 @@
+/*
+ * Copyright 2021 John Schneider.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package bluC.parser.handlers.statement;
 
 import java.util.ArrayList;
 import bluC.Logger;
 import bluC.transpiler.Scope;
-import bluC.transpiler.Statement;
+import bluC.transpiler.statements.Statement;
 import bluC.transpiler.Token;
 import bluC.parser.Parser;
 import bluC.parser.exceptions.InvalidSizeModifier;
-import bluC.transpiler.Statement.VarDeclaration;
-import bluC.transpiler.Statement.VarDeclaration.SimplifiedType;
+import bluC.transpiler.statements.vars.VarDeclaration;
 import bluC.transpiler.TokenFileInfo;
 import bluC.transpiler.TokenInfo;
 import bluC.parser.handlers.expression.ExpressionHandler;
+import bluC.transpiler.Expression;
+import bluC.transpiler.statements.ExpressionStatement;
+import bluC.transpiler.statements.blocks.ClassDef;
+import bluC.transpiler.statements.vars.Sign;
+import bluC.transpiler.statements.vars.SimplifiedType;
+import bluC.transpiler.statements.vars.SizeModifier;
 
 /**
  *
@@ -19,18 +40,19 @@ import bluC.parser.handlers.expression.ExpressionHandler;
  */
 public class VariableHandler
 {
-    private final Parser parser;
-    private final StatementHandler statementHandler;
-    private FunctionHandler funcHandler;
-    private ExpressionHandler expressionHandler;
-    private static long unresolvedVariableNamesCount = Long.MIN_VALUE;
+    private final Parser            parser;
+    private final StatementHandler  statementHandler;
+    private FunctionHandler         funcHandler;
+    private ExpressionHandler       expressionHandler;
+    private static long             unresolvedVariableNamesCount = 
+        Long.MIN_VALUE;
     
     public class TypeAndClassID
     {
         private final SimplifiedType type;
-        private final long classID;
+        private final String classID;
         
-        public TypeAndClassID(SimplifiedType type, long classID)
+        public TypeAndClassID(SimplifiedType type, String classID)
         {
             this.type = type;
             this.classID = classID;
@@ -41,7 +63,7 @@ public class VariableHandler
             return type;
         }
         
-        public long getClassID()
+        public String getClassID()
         {
             return classID;
         }
@@ -68,12 +90,11 @@ public class VariableHandler
      */
     public Statement handleVarDeclarationOrHigher()
     {
-        Token   startToken          = parser.getCurToken();
         int     startTokenIndex     = parser.getCurTokIndex();
-        VarDeclaration.Sign
+        Sign
                 sign                = getSign();
-        
-        TypeAndClassID typeAndClassID = getTypeAndClassID();
+        TypeAndClassID 
+                typeAndClassID      = getTypeAndClassID();
         
         if (typeAndClassID != null)
         {
@@ -82,7 +103,7 @@ public class VariableHandler
                 return funcHandler.handleFunctionOrMethod(sign,
                     typeAndClassID.getType());
             }
-            else 
+            else
             {
                 return handleVarDeclarationWithValidType(sign, 
                     typeAndClassID.getType(), typeAndClassID.getClassID());
@@ -106,8 +127,8 @@ public class VariableHandler
      *  program will not compile.
      */
     private Statement handleVarDeclarationWithValidType(
-        VarDeclaration.Sign sign, VarDeclaration.SimplifiedType type, 
-        long classID)
+        Sign sign, SimplifiedType type, 
+        String classID)
     {
         Token   varName;
         int     pointerLevel = getPointerLevel();
@@ -155,8 +176,8 @@ public class VariableHandler
     }
     
     private Statement handleVarDeclarationWithValidTypeAndName(
-        VarDeclaration.Sign sign, VarDeclaration.SimplifiedType type, 
-        int pointerLevel, Token varName, String nextTokenText, long classID)
+        Sign sign, SimplifiedType type,
+        int pointerLevel, Token varName, String nextTokenText, String classID)
     {
         if (nextTokenText.equals("="))
         {
@@ -175,16 +196,34 @@ public class VariableHandler
             
             Logger.err(curToken, "Expected assignment operator or semicolon " +
                 "after variable declaration");
-
-            parser.gotoEndOfStatement();
-
-            return handleVarDeclarationWithoutAssignment(sign, type, 
-                pointerLevel, varName, classID);
+            
+            //  synchronize parser
+            
+            Expression nullExpr;
+            
+            /*
+             * parser assumes we meant to have a VarDeclarationWithoutAssignment
+             *  but forgot semicolon, so we're already on the correct token for
+             *  synchronization.
+             */
+            nullExpr = ExpressionHandler.createNullLiteral(
+                parser.getCurTokText(), (int) parser.getCurTokLineIndex());
+            
+            return new ExpressionStatement(
+                nullExpr, parser.getCurTokLineIndex());
+            
+            // TODO - this synchronized the parser incorrectly. Leaving it 
+            //  for a bit just in case the new synchronizer breaks things.
+            //
+            //parser.gotoEndOfStatement();
+            //
+            //return handleVarDeclarationWithoutAssignment(sign, type, 
+            //    pointerLevel, varName, classID);
         }
     }
     
-    private Statement handleBadVarName(VarDeclaration.Sign sign, 
-        VarDeclaration.SimplifiedType type,
+    private Statement handleBadVarName(Sign sign, 
+        SimplifiedType type,
         int pointerLevel, Token varName)
     {
         Logger.err(varName, "Expected variable name to follow \"" + 
@@ -236,18 +275,18 @@ public class VariableHandler
      *  further.
      */        
     private Statement handleVarDeclarationWithAssignment(
-        VarDeclaration.Sign sign, VarDeclaration.SimplifiedType type, 
-        int pointerLevel, Token varName, long classID)
+        Sign sign, SimplifiedType type, 
+        int pointerLevel, Token varName, String classID)
     {
         VarDeclaration  var;
         boolean         alreadyDeclared;
         long            startLineIndex = parser.getCurTokLineIndex();
+        Token           assignmentOp;
         
-        // set curToken equal to "="
-        parser.nextToken();
+        assignmentOp = parser.peek();
         
         var = new VarDeclaration(sign, type, pointerLevel, varName, 
-            parser.getCurToken(), expressionHandler.handleExpression(),
+            assignmentOp, expressionHandler.handleExpression(),
             startLineIndex);
         alreadyDeclared = isVarAlreadyDeclaredInThisScope(var);
         
@@ -270,8 +309,8 @@ public class VariableHandler
     }
     
     private Statement handleVarDeclarationWithoutAssignment(
-        VarDeclaration.Sign sign, VarDeclaration.SimplifiedType type, 
-        int pointerLevel, Token varName, long classID)
+        Sign sign, SimplifiedType type, 
+        int pointerLevel, Token varName, String classID)
     {
         VarDeclaration var = new VarDeclaration(sign, type, 
             pointerLevel, varName, null, null, varName.getLineIndex());
@@ -362,21 +401,21 @@ public class VariableHandler
      *  specifier (if it exists), or the token the function started on if
      *  there is no such specifier present.
      */
-    private VarDeclaration.Sign getSign()
+    private Sign getSign()
     {
         String              peekText    = parser.peek().getTextContent();
-        VarDeclaration.Sign sign        = VarDeclaration.Sign.UNSPECIFIED;
+        Sign sign        = Sign.UNSPECIFIED;
         
         if (peekText.equals("signed"))
         {
-            sign = VarDeclaration.Sign.SIGNED;
+            sign = Sign.SIGNED;
             
             //consume the peek
             parser.nextToken();
         }
         else if (peekText.equals("unsigned"))
         {
-            sign = VarDeclaration.Sign.UNSIGNED;
+            sign = Sign.UNSIGNED;
             
             //consume the peek
             parser.nextToken();
@@ -390,7 +429,7 @@ public class VariableHandler
      *  parser on the last token of the size modifier, even if it is two or
      *  more words long.
      */
-    private VarDeclaration.SizeModifier getSizeModifier() 
+    private SizeModifier getSizeModifier() 
         throws InvalidSizeModifier
     {
         Token sizeMod1 = parser.peek();
@@ -399,31 +438,17 @@ public class VariableHandler
         String sizeMod1Text = sizeMod1.getTextContent();
         String sizeMod2OrTypeOrNameText = sizeMod2OrTypeOrName.getTextContent();
         
-        VarDeclaration.SizeModifier sizeModifier = VarDeclaration.SizeModifier.
+        SizeModifier sizeModifier = SizeModifier.
             UNSPECIFIED;
         
         if (sizeMod1Text.equals("short"))
         {
-//            if (sizeMod2OrTypeOrNameText.equals("char")  || 
-//                sizeMod2OrTypeOrNameText.equals("short") ||
-//                sizeMod2OrTypeOrNameText.equals("long")  ||
-//                sizeMod2OrTypeOrNameText.equals("float") ||
-//                sizeMod2OrTypeOrNameText.equals("double"))
-//            {
-//                sizeErrorOccurred = true;
-//            }
-//            else
-//            {
-//                parser.nextToken();
-//                sizeModifier = VarDeclaration.SizeModifier.SHORT;
-//            }
-            
             // move parser from current token to "short" keyword
             parser.nextToken();
             
             if (sizeMod2OrTypeOrNameText.equals("int"))
             {
-                sizeModifier = VarDeclaration.SizeModifier.SHORT;
+                sizeModifier = SizeModifier.SHORT;
             }
             else
             {
@@ -457,7 +482,7 @@ public class VariableHandler
                 }
                 else
                 {
-                    sizeModifier = VarDeclaration.SizeModifier.LONG_LONG;
+                    sizeModifier = SizeModifier.LONG_LONG;
                 
                     //  align tokens such that nextToken() is the variable type
                     parser.nextToken();
@@ -479,7 +504,7 @@ public class VariableHandler
             else
             {
                 parser.nextToken();
-                sizeModifier = VarDeclaration.SizeModifier.LONG;
+                sizeModifier = SizeModifier.LONG;
             }
         }
         
@@ -488,7 +513,7 @@ public class VariableHandler
     
     private TypeAndClassID getTypeAndClassID()
     {
-        VarDeclaration.SizeModifier sizeModifier;
+        SizeModifier sizeModifier;
         
         try
         {
@@ -500,10 +525,10 @@ public class VariableHandler
             Logger.err(errAt, ex.getMessage());
             
             //synchronize parser
-            sizeModifier = VarDeclaration.SizeModifier.UNSPECIFIED;
+            sizeModifier = SizeModifier.UNSPECIFIED;
         }
         
-        if (sizeModifier == VarDeclaration.SizeModifier.SHORT)
+        if (sizeModifier == SizeModifier.SHORT)
         {
             if (parser.peekMatches("int"))
             {
@@ -515,18 +540,18 @@ public class VariableHandler
                 return guessTypeFromSizeErrorAndLogError(sizeModifier);
             }
             
-            return new TypeAndClassID(VarDeclaration.SimplifiedType.SHORT,
-                ClassHandler.CLASS_UNSPECIFIED);
+            return new TypeAndClassID(SimplifiedType.SHORT,
+                ClassDef.NOT_DEFINED);
         }
-        else if (sizeModifier == VarDeclaration.SizeModifier.LONG)
+        else if (sizeModifier == SizeModifier.LONG)
         {
             if (parser.peekMatches("double"))
             {
                 //consume size modifier token
                 parser.nextToken();
                 
-                return new TypeAndClassID(VarDeclaration.SimplifiedType.
-                   LONG_DOUBLE, ClassHandler.CLASS_UNSPECIFIED);
+                return new TypeAndClassID(SimplifiedType.
+                   LONG_DOUBLE, ClassDef.NOT_DEFINED);
             }
             else if (parser.peekMatches("int"))
             {
@@ -538,10 +563,10 @@ public class VariableHandler
                 return guessTypeFromSizeErrorAndLogError(sizeModifier);
             }
             
-            return new TypeAndClassID(VarDeclaration.SimplifiedType.LONG,
-                ClassHandler.CLASS_UNSPECIFIED);
+            return new TypeAndClassID(SimplifiedType.LONG,
+                ClassDef.NOT_DEFINED);
         }
-        else if (sizeModifier == VarDeclaration.SizeModifier.LONG_LONG)
+        else if (sizeModifier == SizeModifier.LONG_LONG)
         {
             //align tokens such that nextToken is variable type or varName
             parser.nextToken();
@@ -559,8 +584,8 @@ public class VariableHandler
                 return guessTypeFromSizeErrorAndLogError(sizeModifier);
             }
             
-            return new TypeAndClassID(VarDeclaration.SimplifiedType.LONG_LONG,
-                ClassHandler.CLASS_UNSPECIFIED);
+            return new TypeAndClassID(SimplifiedType.LONG_LONG,
+                ClassDef.NOT_DEFINED);
         }
         else
         {
@@ -571,38 +596,39 @@ public class VariableHandler
     /**
      * Parses a variable type without regards to the modifier used.
      */
-    private TypeAndClassID getUnmodifiedType() {
+    private TypeAndClassID getUnmodifiedType()
+    {
         parser.nextToken();
         String type = parser.getCurTokText();
 
         if (type.equals("char"))
         {
-            return new TypeAndClassID(VarDeclaration.SimplifiedType.CHAR,
-                ClassHandler.CLASS_UNSPECIFIED);
+            return new TypeAndClassID(SimplifiedType.CHAR,
+                ClassDef.NOT_DEFINED);
         }
         else if (type.equals("int"))
         {
-            return new TypeAndClassID(VarDeclaration.SimplifiedType.INT,
-                ClassHandler.CLASS_UNSPECIFIED);
+            return new TypeAndClassID(SimplifiedType.INT,
+                ClassDef.NOT_DEFINED);
         }
         else if (type.equals("float"))
         {
-            return new TypeAndClassID(VarDeclaration.SimplifiedType.FLOAT,
-                ClassHandler.CLASS_UNSPECIFIED);
+            return new TypeAndClassID(SimplifiedType.FLOAT,
+                ClassDef.NOT_DEFINED);
         }
         else if (type.equals("double"))
         {
-            return new TypeAndClassID(VarDeclaration.SimplifiedType.DOUBLE,
-                ClassHandler.CLASS_UNSPECIFIED);
+            return new TypeAndClassID(SimplifiedType.DOUBLE,
+                ClassDef.NOT_DEFINED);
         }
         else if (type.equals("void")) 
         {
-            return new TypeAndClassID(VarDeclaration.SimplifiedType.VOID,
-                ClassHandler.CLASS_UNSPECIFIED);
+            return new TypeAndClassID(SimplifiedType.VOID,
+                ClassDef.NOT_DEFINED);
         }
         else if (ClassHandler.isClassDefined(parser.getCurToken()))
         {
-            return new TypeAndClassID(VarDeclaration.SimplifiedType.CLASS,
+            return new TypeAndClassID(SimplifiedType.CLASS,
                 ClassHandler.getClassID(parser.getCurToken()));
         }
 
@@ -616,7 +642,7 @@ public class VariableHandler
     }
     
     private TypeAndClassID guessTypeFromSizeErrorAndLogError(
-        VarDeclaration.SizeModifier sizeModifier)
+        SizeModifier sizeModifier)
     {
         Logger.err(parser.getCurToken(), "invalid size specifier \"" + 
             sizeModifier.getActualModifierText() + "\" for type \"" +
